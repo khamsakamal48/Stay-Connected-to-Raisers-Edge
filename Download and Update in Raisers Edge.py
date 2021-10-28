@@ -1,4 +1,4 @@
-import pysftp, json, requests, os, sys, paramiko
+import pysftp, json, requests, os, sys
 
 from dotenv import load_dotenv
 
@@ -7,26 +7,28 @@ load_dotenv()
 # Set current directory
 os.getcwd()
 
-# Download file from SFTO Server
+# Download file from SFTP Server
 HOST = os.getenv("HOST")
-PORT = int(os.getenv("PORT"))
+PORT = int(os.getenv("PORT")) # Change port from string to integer
 USERNAME = os.getenv("USERN")
 PASSWORD = os.getenv("PASSWORD")
 SOURCE = os.getenv("SOURCE_PATH")
 DESTINATION = os.getenv("DESTINATION_PATH")
 
-# Open a transport
-transport = paramiko.Transport((HOST,PORT))
+# Change Directory 
+os.chdir(DESTINATION)
 
-# Auth
-transport.connect(None,USERNAME,PASSWORD)
+# Connect to SFTP Server
+with pysftp.Connection(host=HOST, port=PORT, username=USERNAME, password=PASSWORD) as sftp:
+  # Change directory in remote
+  with sftp.cd(SOURCE):
+    # List all files in that directory
+    files = sftp.listdir()
+    for each_file in files:
+      # Download file
+      sftp.get(each_file)
+      # Remove file
+      sftp.remove(each_file)
 
-# Connect Now
-sftp = paramiko.SFTPClient.from_transport(transport)
-
-# Download files
-sftp.get(SOURCE, DESTINATION)
-
-# Close
-if sftp: sftp.close()
-if transport: transport.close()
+# Change Directory back
+os.chdir('..')
