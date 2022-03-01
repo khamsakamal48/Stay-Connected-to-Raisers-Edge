@@ -1,4 +1,4 @@
-import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2
+import json, requests
 
 from dotenv import load_dotenv
 
