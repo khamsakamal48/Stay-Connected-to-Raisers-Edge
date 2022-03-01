@@ -7,6 +7,14 @@ load_dotenv()
 # Set current directory
 os.getcwd()
 
+# Create a .env file with below parameters
+#HOST=
+#PORT=
+#USERN=
+#PASSWORD=
+#SOURCE_PATH=
+#DESTINATION_PATH=
+
 # Download file from SFTP Server
 HOST = os.getenv("HOST")
 PORT = int(os.getenv("PORT")) # Change port from string to integer
