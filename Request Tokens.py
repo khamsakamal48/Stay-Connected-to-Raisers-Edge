@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import json, requests
+import json, requests, os
 
 from dotenv import load_dotenv
 
@@ -25,6 +25,7 @@ os.getcwd()
 #CLIENT_ID=
 
 # Retrieve contents from .env file
+# Get authorization code by encoding client_id:client_secret at https://www.base64encode.org
 AUTH_CODE = os.getenv("AUTH_CODE")
 REDIRECT_URL = os.getenv("REDIRECT_URL")
 CLIENT_ID = os.getenv("CLIENT_ID")
