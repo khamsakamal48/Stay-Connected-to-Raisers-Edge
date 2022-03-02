@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pysftp, os, csv, shutil, glob, pandas, psycopg2
 
 from dotenv import load_dotenv
