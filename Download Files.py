@@ -52,14 +52,13 @@ with pysftp.Connection(host=HOST, port=PORT, username=USERNAME, password=PASSWOR
       sftp.remove(each_file)
 
 # Merge CSV files into one
-os.system("touch Stay_Connected_Merged_All.csv")
-os.system("awk '(NR == 1) || (FNR > 1)' *-*.csv > Stay_Connected_Merged_All.csv")
+os.system("awk '(NR == 1) || (FNR > 1)' *-*.csv > Stay_Connected_Merged.csv")
 
 #Remove blank rows
-os.system("sed -i 's/\s*;\s*/;/g' Stay_Connected_Merged_All.csv")
-os.system("sed -i 's/\s*,\s*/,/g' Stay_Connected_Merged_All.csv")
-os.system("sed -i '/^$/d' Stay_Connected_Merged_All.csv")
-os.system("awk -F, 'length>NF+1' Stay_Connected_Merged_All.csv > Stay_Connected_Merged_All_New.csv")
+os.system("sed -i 's/\s*;\s*/;/g' Stay_Connected_Merged.csv")
+os.system("sed -i 's/\s*,\s*/,/g' Stay_Connected_Merged.csv")
+os.system("sed -i '/^$/d' Stay_Connected_Merged.csv")
+os.system("awk -F, 'length>NF+1' Stay_Connected_Merged.csv > Stay_Connected_Merged_All_New.csv")
 
 # Delete last column from CSV file
 with open("Stay_Connected_Merged_All_New.csv", "r") as fin:
@@ -91,7 +90,7 @@ conn = psycopg2.connect(host=DB_IP, dbname=DB_NAME, user=DB_USERNAME, password=D
 cur = conn.cursor()
 
 # Delete rows in table
-cur.execute("truncate updates_from_monash_server;")
+cur.execute("truncate updates_from_stayconnected;")
 
 # Commit changes
 conn.commit()
@@ -101,7 +100,7 @@ with open('Stay_Connected_Merged_All.csv', 'r') as input_csv:
 
     # Skip the header row.
     next(input_csv)
-    cur.copy_from(input_csv, 'updates_from_monash_server', sep=',')
+    cur.copy_from(input_csv, 'updates_from_stayconnected', sep=',')
 
 # Commit changes
 conn.commit()
