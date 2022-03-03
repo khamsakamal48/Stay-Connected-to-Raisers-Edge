@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import json, requests, os
+import json, requests, os, sys
+
+# Set current directory
+os.chdir(os.path.dirname(sys.argv[0]))
 
 from dotenv import load_dotenv
 

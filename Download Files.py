@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import pysftp, os, csv, shutil, glob, pandas, psycopg2
+import pysftp, os, csv, shutil, glob, pandas, psycopg2, sys
+
+# Set current directory
+os.chdir(os.path.dirname(sys.argv[0]))
 
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# Set current directory
-os.getcwd()
 
 # Create a .env file with below parameters
 #HOST=

@@ -2,6 +2,9 @@
 
 import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2
 
+# Set current directory
+os.chdir(os.path.dirname(sys.argv[0]))
+
 from dotenv import load_dotenv
 
 load_dotenv()

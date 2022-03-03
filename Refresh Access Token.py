@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-import json, requests, os, shutil
+import json, requests, os, shutil, sys
+
+# Set current directory
+os.chdir(os.path.dirname(sys.argv[0]))
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Set current directory
-os.getcwd()
+os.chdir(os.path.dirname(sys.argv[0]))
 
 # Create a .env file with below parameters
 #HOST=
