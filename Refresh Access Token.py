@@ -9,9 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Set current directory
-os.chdir(os.path.dirname(sys.argv[0]))
-
 # Create a .env file with below parameters
 #HOST=
 #PORT=
