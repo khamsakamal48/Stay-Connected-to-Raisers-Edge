@@ -41,12 +41,12 @@ cur = conn.cursor()
 
 # Query the next data to uploaded in RE
 extract_sql = """
-        SELECT * FROM updates_from_monash_server EXCEPT SELECT * FROM updated_in_raisers_edge FETCH FIRST 1 ROW ONLY;
+        SELECT * FROM updates_from_stayconnected EXCEPT SELECT * FROM updated_in_raisers_edge FETCH FIRST 1 ROW ONLY;
         """
 cur.execute(extract_sql)
 
 # Header of CSV file
-header = ['id',	'first_name', 'last_name', 'email_1', 'email_2', 'phone_1', 'class_of', 'dept', 'hostel', 'country', 'state', 'city', 'organization', 'position', 'created_on']
+header = ['id', 'first_name', 'last_name', 'email_1', 'email_2', 'email_3', 'email_4', 'email_5', 'email_6', 'phone_1', 'class_of', 'dept', 'hostel', 'country', 'state', 'city', 'organization', 'position', 'status', 'created_on', 'interest']
 
 # Extract the next data to uploaded in RE to CSV file
 with open('update.csv', 'w', encoding='UTF8') as update:
@@ -56,20 +56,20 @@ with open('update.csv', 'w', encoding='UTF8') as update:
     writer.writerow(header)
     writer.writerows(cur)
 
-# Close DB connection
-cur.close()
-conn.close()
-
 # Convert from CSV to JSON
 os.system("csvjson update.csv > update.json")
 
 # Retrieve values to be updated in RE from update.json
 with open('update.json') as update:
-  data = json.load(update)
+  data = json.load([update])
   first_name = data["first_name"]
   last_name = data["last_name"]
   email_1 = data["email_1"]
   email_2 = data["email_2"]
+  email_3 = data["email_3"]
+  email_4 = data["email_4"]
+  email_5 = data["email_5"]
+  email_6 = data["email_6"]
   phone_1 = data["phone_1"]
   class_of = data["class_of"]
   dept = data["dept"]
@@ -80,3 +80,16 @@ with open('update.json') as update:
   organization = data["organization"]
   position = data["position"]
 
+# Update the completed table in DB
+with open('update.csv', 'r') as input_csv:
+
+    # Skip the header row.
+    next(input_csv)
+    cur.copy_from(input_csv, 'updated_in_raisers_edge', sep=',')
+
+# Commit changes
+conn.commit()
+
+# Close DB connection
+cur.close()
+conn.close()
