@@ -23,6 +23,13 @@ load_dotenv()
 #AUTH_CODE=
 #REDIRECT_URL=
 #CLIENT_ID=
+#RE_API_KEY=
+#MAIL_USERN=
+#MAIL_PASSWORD=
+#IMAP_URL=
+#IMAP_PORT=
+#SMTP_URL=
+#SMTP_PORT=
 
 # Retrieve contents from .env file
 HOST = os.getenv("HOST")
