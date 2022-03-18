@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2, smtplib, ssl, json, time, imaplib
 from soupsieve import match
