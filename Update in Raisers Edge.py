@@ -118,6 +118,25 @@ def check_for_errors():
     if any(x in api_response for x in error_keywords):
         # Send emails
         send_error_emails()
+def send_error_emails():
+    with open('email_details.json') as f:
+        email = json.load(f)
+        sender_email = email["from"]
+        reply_to = email["reply_to"]
+        receiver_email = email["to"]
+        subject = email["subject"]
+        
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = sender_email
+        message["To"] = receiver_email
+
+        # Adding Reply-to header
+        message.add_header('reply-to', reply_to)
+        
+        TEMPLATE="""
+        """
+    
 def search_for_constituent_id():
   params = {
     'search_text':search_text
