@@ -18,7 +18,7 @@ Install PostgreSQL
 
 Create stay_connected database
 
-Create table
+Create tables
 
 CREATE TABLE updates_from_stayconnected
 (
@@ -44,3 +44,50 @@ CREATE TABLE updates_from_stayconnected
     created_on character varying,
     interest character varying
 );
+
+CREATE TABLE updated_in_raisers_edge
+(
+    id character varying,
+    fname character varying,
+    lname character varying,
+    email character varying,
+    email1 character varying,
+    email2 character varying,
+    email3 character varying,
+    email4 character varying,
+    email5 character varying,
+    contact character varying,
+    batch character varying,
+    dept character varying,
+    hostel character varying,
+    country character varying,
+    state character varying,
+    city character varying,
+    organization character varying,
+    position character varying,
+    status character varying,
+    created_on character varying,
+    interest character varying
+);
+
+# Create a .env file with below parameters
+#HOST=
+#PORT=
+#USERN=
+#PASSWORD=
+#SOURCE_PATH=
+#DESTINATION_PATH=
+#DB_IP=
+#DB_NAME=
+#DB_USERNAME=
+#DB_PASSWORD=
+#AUTH_CODE=
+#REDIRECT_URL=
+#CLIENT_ID=
+#RE_API_KEY=
+#MAIL_USERN=
+#MAIL_PASSWORD=
+#IMAP_URL=
+#IMAP_PORT=
+#SMTP_URL=
+#SMTP_PORT=
