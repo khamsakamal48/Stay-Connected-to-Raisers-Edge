@@ -92,10 +92,6 @@ headers = {
     'Authorization': 'Bearer ' + access_token,
 }
 
-def get_request():
-  url = url
-  params = params
-
   global api_response
   api_response = requests.get(url, params=params, headers=headers).json()
 
@@ -148,6 +144,13 @@ def search_for_constituent_id():
 
   # Blackbaud API GET request
   get_request()
+
+  global api_response_constituent_search
+  api_response_constituent_search = api_response
+  
+  global count
+  # Get the count of results
+  count = api_response["count"]
 
 def constituent_not_found_email():
   with open('email_details.json') as f:
