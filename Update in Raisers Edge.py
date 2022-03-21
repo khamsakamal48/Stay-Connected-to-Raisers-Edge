@@ -99,6 +99,25 @@ def get_request():
   global api_response
   api_response = requests.get(url, params=params, headers=headers).json()
 
+def post_request():
+    headers = {
+    # Request headers
+    'Bb-Api-Subscription-Key': RE_API_KEY,
+    'Authorization': 'Bearer ' + access_token,
+    'Content-Type': 'application/json',
+    }
+    
+    global api_response
+    api_response = requests.post(url, params=params, headers=headers, json=params).json()
+    
+    check_for_errors()
+    
+def check_for_errors():
+    error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable"]
+    
+    if any(x in api_response for x in error_keywords):
+        # Send emails
+        send_error_emails()
 def search_for_constituent_id():
   params = {
     'search_text':search_text
