@@ -138,10 +138,12 @@ def send_error_emails():
         """
     
 def search_for_constituent_id():
+  global params
   params = {
     'search_text':search_text
   }
 
+  global url
   url = "https://api.sky.blackbaud.com/constituent/v1/constituents/search"
 
   # Blackbaud API GET request
