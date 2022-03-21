@@ -16,28 +16,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Create a .env file with below parameters
-#HOST=
-#PORT=
-#USERN=
-#PASSWORD=
-#SOURCE_PATH=
-#DESTINATION_PATH=
-#DB_IP=
-#DB_NAME=
-#DB_USERNAME=
-#DB_PASSWORD=
-#AUTH_CODE=
-#REDIRECT_URL=
-#CLIENT_ID=
-#RE_API_KEY=
-#MAIL_USERN=
-#MAIL_PASSWORD=
-#IMAP_URL=
-#IMAP_PORT=
-#SMTP_URL=
-#SMTP_PORT=
-
 # Retrieve contents from .env file
 DB_IP = os.getenv("DB_IP")
 DB_NAME = os.getenv("DB_NAME")
