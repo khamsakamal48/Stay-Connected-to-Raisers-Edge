@@ -9,7 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment
 
 # Set current directory
-os.chdir(os.path.dirname(sys.argv[0]))
+#os.chdir(os.path.dirname(sys.argv[0]))
+os.chdir(os.getcwd())
 
 from dotenv import load_dotenv
 
