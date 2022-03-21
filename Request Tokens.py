@@ -10,21 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Create a .env file with below parameters
-#HOST=
-#PORT=
-#USERN=
-#PASSWORD=
-#SOURCE_PATH=
-#DESTINATION_PATH=
-#DB_IP=
-#DB_NAME=
-#DB_USERNAME=
-#DB_PASSWORD=
-#AUTH_CODE=
-#REDIRECT_URL=
-#CLIENT_ID=
-
 # Retrieve contents from .env file
 # Get authorization code by encoding client_id:client_secret at https://www.base64encode.org
 AUTH_CODE = os.getenv("AUTH_CODE")
