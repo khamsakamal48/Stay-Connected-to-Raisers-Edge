@@ -85,6 +85,7 @@ with open('access_token_output.json') as access_token_output:
   data = json.load(access_token_output)
   access_token = data["access_token"]
 
+def get_request():
 # Request Headers for Blackbaud API request
 headers = {
     # Request headers
