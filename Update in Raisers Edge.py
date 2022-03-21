@@ -720,6 +720,20 @@ def constituent_not_found_email():
 
   sys.exit()
 
+def update_email():
+    global params
+    params = {
+        'address': email_address,
+        'constituent_id': constituent_id,
+        'type': new_email_type
+    }
+    
+    global url
+    url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses"
+    
+    # Blackbaud API POST request
+    post_request()
+
 def update_record():
   # Get Constituent ID
   constituent_id = response["id"]
