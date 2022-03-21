@@ -86,16 +86,16 @@ with open('access_token_output.json') as access_token_output:
   access_token = data["access_token"]
 
 def get_request():
-# Request Headers for Blackbaud API request
-headers = {
+    # Request Headers for Blackbaud API request
+    headers = {
     # Request headers
     'Bb-Api-Subscription-Key': RE_API_KEY,
     'Authorization': 'Bearer ' + access_token,
-}
-
-  global api_response
-  api_response = requests.get(url, params=params, headers=headers).json()
-
+    }
+    
+    global api_response
+    api_response = requests.get(url, params=params, headers=headers).json()
+  
 def post_request():
     headers = {
     # Request headers
@@ -115,6 +115,7 @@ def check_for_errors():
     if any(x in api_response for x in error_keywords):
         # Send emails
         send_error_emails()
+
 def send_error_emails():
     with open('email_details.json') as f:
         email = json.load(f)
@@ -145,7 +146,7 @@ def search_for_constituent_id():
 
   # Blackbaud API GET request
   get_request()
-
+  
   global api_response_constituent_search
   api_response_constituent_search = api_response
   
@@ -735,27 +736,78 @@ def update_email():
     post_request()
 
 def update_record():
-  # Get Constituent ID
-  constituent_id = response["id"]
+    global constituent_id
+    constituent_id = api_response_constituent_search["value"][0]["id"]
+  
+    # Retrieve Email List
+    global params
+    params = {
+        #'search_text':search_text
+    }
 
-  # Retrieve Email List
-  params = {
-    #'search_text':search_text
-  }
+    global url
+    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
 
-  url = "https://api.sky.blackbaud.com/constituent/v1/constituents/{constituent_id}/emailaddresses"
-
-  # Blackbaud API GET request
-  get_request()
-
-  for address in api_response['value']:
-    try:
-      email = (address['address'])
-      print(email)
-    except:
-      pass
-
-  # Check and update email
+    # Blackbaud API GET request
+    get_request()
+    
+    global email_search_api_response
+    email_search_api_response = api_response
+    
+    # Check and update email
+    global email_type_list
+    email_type_list=[]
+    email_list = [email_1, email_2, email_3, email_4, email_5, email_6]
+            
+    re_email_list = []
+    for address in api_response['value']:
+        try:
+            emails = (address['address'])
+            re_email_list.append(emails)
+        except:
+            pass
+        
+    # Finding missing email addresses to be added in RE
+    set1 = set(email_list)
+    set2 = set(re_email_list)
+    
+    missing = list(sorted(set1 - set2))
+    
+    for emails in missing:
+        print ("Email to be added")
+        global email_address
+        email_address = emails
+        # Figure the email type
+        types = address['type']
+        email_num = re.sub("[^0-9]", "", types)
+        email_type_list.append(email_num)
+        existing_max_count = int(max(email_type_list))
+        print (existing_max_count)
+        new_max_count = existing_max_count + 1
+        print(new_max_count)
+        try:
+            incremental_max_count
+        except:
+            incremental_max_count = new_max_count
+        else:
+            incremental_max_count = incremental_max_count + 1            
+        print (incremental_max_count)
+        global new_email_type
+        new_email_type = "Email " + str(incremental_max_count)
+        #new_email_type = exec("Email %s" % str(ncount))
+        print (new_email_type)
+        update_email()
+        
+    # Mark email_1 address as primary
+    for email_search in email_search_api_response['value']:
+        if email_search['address'] == email_1:
+            email_address_id = email_search['id']
+            print (email_address_id)
+            break
+    
+    
+    
+  
   # Check and  update phone
   # Check and update Education details
   # Check and update Organisation
@@ -775,60 +827,18 @@ def update_record():
   #cur.close()
   #conn.close()
 
-  sys.exit()
-
-
-# Search on the basis of email_1
-match email_1:
-  case ""|0:
-    print("email_1 is blank")
-    match email_2:
-      case ""|0:
-        print("email_2 is blank")
-        match email_3:
-          case ""|0:
-            print("email_3 is blank")
-            match email_4:
-              case ""|0:
-                print("email_4 is blank")
-                match email_5:
-                  case ""|0:
-                    print("email_5 is blank")
-                    match email_6:
-                      case ""|0:
-                        print("email_6 is blank")
-                        match phone_1:
-                          case ""|0:
-                            print("phone is blank. The script will exit.")
-                            # Close DB connection
-                            cur.close()
-                            conn.close()
-                            sys.exit()
-                          case "*":
-                            print("will search Alum based on phone")
-                      case "*":
-                        print("will search Alum based on email_6")
-                  case "*":
-                    print("will search Alum based on email_5")
-              case "*":
-                print("will search Alum based on email_4")
-          case "*":
-            print("will search Alum based on email_3")
-      case "*":
-        print("will search Alum based on email_2")
-  case "*":
-    print("will search Alum based on email_1")
-    search_text = email_1
-    search_for_constituent_id()
-
-    # Get the count of results
-    count = response["count"]
-
-    # If search results not equal to 1
-    if count != 1:
-      # Send email to Admin
-      constituent_not_found_email()
-    else:
-      # Start updating Alumni Record
-      print("Will update Alumni Record")
-      update_record()
+    sys.exit()
+    
+    
+count = 0
+while count != 1:
+    for emails in {email_1, email_2, email_3, email_4, email_5, email_6}:
+        try:
+            global search_text
+            search_text = emails
+            search_for_constituent_id()
+        except:
+            constituent_not_found_email()
+else:
+    print ("Got constituent ID")
+    update_record()
