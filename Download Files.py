@@ -125,3 +125,7 @@ with open('Stay_Connected_Merged_All.csv', 'r') as input_csv:
 
 # Commit changes
 conn.commit()
+
+# Close DB connection
+cur.close()
+conn.close()
