@@ -117,13 +117,10 @@ def patch_request():
     'Content-Type': 'application/json',
     }
     
-    global params
-    params = {
-        #'search_text':search_text
-    }
-    
     global api_response
-    api_response = requests.patch(url, params=params, headers=headers, json=params).json()
+    api_response = requests.patch(url, params=params, headers=headers, data=params).json()
+    
+    check_for_errors()
     
 def check_for_errors():
     error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable"]
@@ -822,13 +819,21 @@ def update_record():
             
             url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
             
+            params = {
+                "primary": "true"
+            }
+            
             patch_request()
             break
     
+    # Check and  update phone
+    # Retrieve Phone List
+    # Check for missing phone numbers
+    # Mark phone_1 as primary
     
     
   
-  # Check and  update phone
+  
   # Check and update Education details
   # Check and update Organisation
   # Check and update name
