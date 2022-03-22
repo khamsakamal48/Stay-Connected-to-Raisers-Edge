@@ -826,9 +826,25 @@ def update_record():
             patch_request()
             break
     
-    # Check and  update phone
+    # Check and update phone
     # Retrieve Phone List
+    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/phones" % constituent_id
+    
+    params = {
+        #'search_text':search_text
+    }
+    
+    # Blackbaud API GET request 
+    get_request()
+    
     # Check for missing phone numbers
+    global phone_search_api_response
+    phone_search_api_response = api_response
+    
+    global phone_type_list
+    phone_type_list=[]
+    phone_list = [email_1, email_2, email_3, email_4, email_5, email_6]
+    
     # Mark phone_1 as primary
     
     
