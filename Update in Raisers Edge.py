@@ -108,7 +108,7 @@ def post_request():
     api_response = requests.post(url, params=params, headers=headers, json=params).json()
     
     check_for_errors()
-    
+
 def patch_request():
     headers = {
     # Request headers
@@ -124,6 +124,7 @@ def patch_request():
     
     global api_response
     api_response = requests.patch(url, params=params, headers=headers, json=params).json()
+    
 def check_for_errors():
     error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable"]
     
@@ -797,20 +798,15 @@ def update_record():
         email_num = re.sub("[^0-9]", "", types)
         email_type_list.append(email_num)
         existing_max_count = int(max(email_type_list))
-        print (existing_max_count)
         new_max_count = existing_max_count + 1
-        print(new_max_count)
         try:
             incremental_max_count
         except:
             incremental_max_count = new_max_count
         else:
             incremental_max_count = incremental_max_count + 1            
-        print (incremental_max_count)
         global new_email_type
         new_email_type = "Email " + str(incremental_max_count)
-        #new_email_type = exec("Email %s" % str(ncount))
-        print (new_email_type)
         update_email()
         
     # Mark email_1 address as primary
