@@ -843,7 +843,41 @@ def update_record():
     
     global phone_type_list
     phone_type_list=[]
-    phone_list = [email_1, email_2, email_3, email_4, email_5, email_6]
+    phone_list = [phone_1]
+    
+    re_phone_list = []
+    for address in api_response['value']:
+        try:
+            phone = (address['number'])
+            re_phone_list.append(phone)
+        except:
+            pass
+        
+    # Finding missing email addresses to be added in RE
+    set1 = set(phone_list)
+    set2 = set(re_phone_list)
+    
+    missing = list(sorted(set1 - set2))
+    
+    for phones in missing:
+        print ("Phone numbers to be added")
+        global phone_number
+        phone_number = phones
+        # Figure the email type
+        types = address['type']
+        phone_num = re.sub("[^0-9]", "", types)
+        phone_type_list.append(phone_num)
+        existing_max_count = int(max(phone_type_list))
+        new_max_count = existing_max_count + 1
+        try:
+            incremental_max_count
+        except:
+            incremental_max_count = new_max_count
+        else:
+            incremental_max_count = incremental_max_count + 1            
+        global new_phone_type
+        new_phone_type = "Mobile " + str(incremental_max_count)
+        update_email()
     
     # Mark phone_1 as primary
     
