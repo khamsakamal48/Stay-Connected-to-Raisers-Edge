@@ -109,6 +109,21 @@ def post_request():
     
     check_for_errors()
     
+def patch_request():
+    headers = {
+    # Request headers
+    'Bb-Api-Subscription-Key': RE_API_KEY,
+    'Authorization': 'Bearer ' + access_token,
+    'Content-Type': 'application/json',
+    }
+    
+    global params
+    params = {
+        #'search_text':search_text
+    }
+    
+    global api_response
+    api_response = requests.patch(url, params=params, headers=headers, json=params).json()
 def check_for_errors():
     error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable"]
     
@@ -799,10 +814,19 @@ def update_record():
         update_email()
         
     # Mark email_1 address as primary
-    for email_search in email_search_api_response['value']:
+    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
+    
+    # Blackbaud API GET request
+    get_request()
+    
+    for email_search in api_response['value']:
         if email_search['address'] == email_1:
+            
             email_address_id = email_search['id']
-            print (email_address_id)
+            
+            url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
+            
+            patch_request()
             break
     
     
