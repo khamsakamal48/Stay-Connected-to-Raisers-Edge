@@ -118,12 +118,12 @@ def patch_request():
     }
     
     global api_response
-    api_response = requests.patch(url, params=params, headers=headers, data=params).json()
+    api_response = requests.patch(url, headers=headers, data=params)
     
     check_for_errors()
     
 def check_for_errors():
-    error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable"]
+    error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable", "Unexpected", "error_code"]
     
     if any(x in api_response for x in error_keywords):
         # Send emails
@@ -747,6 +747,24 @@ def update_email():
     
     # Blackbaud API POST request
     post_request()
+    
+    check_for_errors()
+
+def update_phone():
+    global params
+    params = {
+        'number': phone_number,
+        'constituent_id': constituent_id,
+        'type': new_phone_type
+    }
+    
+    global url
+    url = "https://api.sky.blackbaud.com/constituent/v1/phones"
+    
+    # Blackbaud API POST request
+    post_request()
+    
+    #check_for_errors()
 
 def update_record():
     global constituent_id
@@ -819,9 +837,11 @@ def update_record():
             
             url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
             
-            params = {
+            params = """
+            {
                 "primary": "true"
             }
+            """
             
             patch_request()
             break
@@ -843,17 +863,17 @@ def update_record():
     
     global phone_type_list
     phone_type_list=[]
-    phone_list = [phone_1]
+    phone_list = [re.sub("[^0-9]", "", phone_1)]
     
     re_phone_list = []
     for address in api_response['value']:
         try:
-            phone = (address['number'])
+            phone = re.sub("[^0-9]", "",(address['number']))
             re_phone_list.append(phone)
         except:
             pass
         
-    # Finding missing email addresses to be added in RE
+    # Finding missing phone numbers to be added in RE
     set1 = set(phone_list)
     set2 = set(re_phone_list)
     
@@ -862,7 +882,7 @@ def update_record():
     for phones in missing:
         print ("Phone numbers to be added")
         global phone_number
-        phone_number = phones
+        phone_number = "+" + str(phones)
         # Figure the email type
         types = address['type']
         phone_num = re.sub("[^0-9]", "", types)
@@ -870,18 +890,27 @@ def update_record():
         existing_max_count = int(max(phone_type_list))
         new_max_count = existing_max_count + 1
         try:
-            incremental_max_count
+            incremental_max_count_phone
         except:
-            incremental_max_count = new_max_count
+            incremental_max_count_phone = new_max_count
         else:
-            incremental_max_count = incremental_max_count + 1            
+            incremental_max_count_phone = incremental_max_count_phone + 1            
         global new_phone_type
-        new_phone_type = "Mobile " + str(incremental_max_count)
-        update_email()
-    
-    # Mark phone_1 as primary
-    
-    
+        new_phone_type = "Mobile " + str(incremental_max_count_phone)
+        update_phone()
+
+        # Mark phone_1 as primary
+        phone_number_id = api_response['id']
+
+        url = "https://api.sky.blackbaud.com/constituent/v1/phones/%s" % phone_number_id
+
+        params = """
+        {
+            "primary": "true"
+        }
+        """
+        
+        patch_request()
   
   
   # Check and update Education details
