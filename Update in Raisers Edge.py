@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from cgitb import reset
+from datetime import datetime
 import email
 import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2, smtplib, ssl, json, time, imaplib, re
 from soupsieve import match
@@ -95,6 +96,8 @@ def get_request():
     
     global api_response
     api_response = requests.get(url, params=params, headers=headers).json()
+    
+    check_for_errors()
   
 def post_request():
     headers = {
@@ -123,30 +126,106 @@ def patch_request():
     check_for_errors()
     
 def check_for_errors():
-    error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable", "Unexpected", "error_code"]
+    error_keywords = ["invalid", "error", "bad", "Unauthorized", "Forbidden", "Not Found", "Unsupported Media Type", "Too Many Requests", "Internal Server Error", "Service Unavailable", "Unexpected", "error_code", "400"]
     
     if any(x in api_response for x in error_keywords):
         # Send emails
+        print ("Will send email now")
         send_error_emails()
 
 def send_error_emails():
-    with open('email_details.json') as f:
-        email = json.load(f)
-        sender_email = email["from"]
-        reply_to = email["reply_to"]
-        receiver_email = email["to"]
-        subject = email["subject"]
-        
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = sender_email
-        message["To"] = receiver_email
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Unable to find Alum in Raisers Edge for Stay Connected"
+    message["From"] = MAIL_USERN
+    message["To"] = MAIL_USERN
 
-        # Adding Reply-to header
-        message.add_header('reply-to', reply_to)
+    # Adding Reply-to header
+    message.add_header('reply-to', MAIL_USERN)
         
-        TEMPLATE="""
-        """
+    TEMPLATE="""
+    <table style="background-color: #ffffff; border-color: #ffffff; width: auto; margin-left: auto; margin-right: auto;">
+    <tbody>
+    <tr style="height: 127px;">
+    <td style="background-color: #363636; width: 100%; text-align: center; vertical-align: middle; height: 127px;">&nbsp;
+    <h1><span style="color: #ffffff;">&nbsp;Raiser's Edge Automation: {job_name} Failed</span>&nbsp;</h1>
+    </td>
+    </tr>
+    <tr style="height: 18px;">
+    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+    </tr>
+    <tr style="height: 18px;">
+    <td style="width: 100%; height: 18px; background-color: #ffffff; border-color: #ffffff; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #455362;">This is to notify you that execution of Auto-updating Alumni records has failed.</span>&nbsp;</td>
+    </tr>
+    <tr style="height: 18px;">
+    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+    </tr>
+    <tr style="height: 61px;">
+    <td style="width: 100%; background-color: #2f2f2f; height: 61px; text-align: center; vertical-align: middle;">
+    <h2><span style="color: #ffffff;">Job details:</span></h2>
+    </td>
+    </tr>
+    <tr style="height: 52px;">
+    <td style="height: 52px;">
+    <table style="background-color: #2f2f2f; width: 100%; margin-left: auto; margin-right: auto; height: 42px;">
+    <tbody>
+    <tr>
+    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Job :</span>&nbsp;</td>
+    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{job_name}&nbsp;</td>
+    </tr>
+    <tr>
+    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Failed on :</span>&nbsp;</td>
+    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{current_time}&nbsp;</td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    <tr style="height: 18px;">
+    <td style="height: 18px; background-color: #ffffff;">&nbsp;</td>
+    </tr>
+    <tr style="height: 18px;">
+    <td style="height: 18px; width: 100%; background-color: #ffffff; text-align: center; vertical-align: middle;">Below is the detailed error log,</td>
+    </tr>
+    <tr style="height: 217.34375px;">
+    <td style="height: 217.34375px; background-color: #f8f9f9; width: 100%; text-align: left; vertical-align: middle;">{error_log_message}</td>
+    </tr>
+    </tbody>
+    </table>
+    """
+    
+    # Create a text/html message from a rendered template
+    emailbody = MIMEText(
+    Environment().from_string(TEMPLATE).render(
+        job_name="Updates from Stay Connected",
+        error_log_message=api_response,
+        current_time=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        ), "html"
+    )
+    
+    # Add HTML parts to MIMEMultipart message
+    # The email client will try to render the last part first
+    message.attach(emailbody)
+    emailcontent = message.as_string()
+
+    # Create secure connection with server and send email
+    context = ssl._create_unverified_context()
+    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
+        server.login(MAIL_USERN, MAIL_PASSWORD)
+        server.sendmail(
+            MAIL_USERN, MAIL_USERN, emailcontent
+        )
+
+    # Save copy of the sent email to sent items folder
+    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
+        imap.login(MAIL_USERN, MAIL_PASSWORD)
+        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), emailcontent.encode('utf8'))
+        imap.logout()
+
+    # Close DB connection
+    cur.close()
+    conn.close()
+
+    sys.exit()
     
 def search_for_constituent_id():
   global params
@@ -168,20 +247,13 @@ def search_for_constituent_id():
   count = api_response["count"]
 
 def constituent_not_found_email():
-  with open('email_details.json') as f:
-    email = json.load(f)
-    sender_email = email["from"]
-    reply_to = email["reply_to"]
-    receiver_email = email["to"]
-    subject = email["subject"]
-
   message = MIMEMultipart("alternative")
-  message["Subject"] = subject
-  message["From"] = sender_email
-  message["To"] = receiver_email
+  message["Subject"] = "Unable to find Alum in Raisers Edge for Stay Connected"
+  message["From"] = MAIL_USERN
+  message["To"] = MAIL_USERN
 
   # Adding Reply-to header
-  message.add_header('reply-to', reply_to)
+  message.add_header('reply-to', MAIL_USERN)
 
   TEMPLATE = """
   <!DOCTYPE html>
@@ -719,7 +791,7 @@ def constituent_not_found_email():
   with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
       server.login(MAIL_USERN, MAIL_PASSWORD)
       server.sendmail(
-          sender_email, receiver_email,  emailcontent
+          MAIL_USERN, MAIL_USERN, emailcontent
       )
 
   # Save copy of the sent email to sent items folder
@@ -767,76 +839,144 @@ def update_phone():
     #check_for_errors()
 
 def update_record():
-    global constituent_id
-    constituent_id = api_response_constituent_search["value"][0]["id"]
-  
-    # Retrieve Email List
-    global params
-    params = {
-        #'search_text':search_text
-    }
+    try:
+        global constituent_id
+        constituent_id = api_response_constituent_search["value"][0]["id"]
+    
+        # Retrieve Email List
+        global params
+        params = {
+            #'search_text':search_text
+        }
 
-    global url
-    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
+        global url
+        url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
 
-    # Blackbaud API GET request
-    get_request()
-    
-    global email_search_api_response
-    email_search_api_response = api_response
-    
-    # Check and update email
-    global email_type_list
-    email_type_list=[]
-    email_list = [email_1, email_2, email_3, email_4, email_5, email_6]
-            
-    re_email_list = []
-    for address in api_response['value']:
-        try:
-            emails = (address['address'])
-            re_email_list.append(emails)
-        except:
-            pass
+        # Blackbaud API GET request
+        get_request()
         
-    # Finding missing email addresses to be added in RE
-    set1 = set(email_list)
-    set2 = set(re_email_list)
-    
-    missing = list(sorted(set1 - set2))
-    
-    for emails in missing:
-        print ("Email to be added")
-        global email_address
-        email_address = emails
-        # Figure the email type
-        types = address['type']
-        email_num = re.sub("[^0-9]", "", types)
-        email_type_list.append(email_num)
-        existing_max_count = int(max(email_type_list))
-        new_max_count = existing_max_count + 1
-        try:
-            incremental_max_count
-        except:
-            incremental_max_count = new_max_count
-        else:
-            incremental_max_count = incremental_max_count + 1            
-        global new_email_type
-        new_email_type = "Email " + str(incremental_max_count)
-        update_email()
+        global email_search_api_response
+        email_search_api_response = api_response
         
-    # Mark email_1 address as primary
-    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
-    
-    # Blackbaud API GET request
-    get_request()
-    
-    for email_search in api_response['value']:
-        if email_search['address'] == email_1:
+        # Check and update email
+        global email_type_list
+        email_type_list=[]
+        email_list = [email_1, email_2, email_3, email_4, email_5, email_6]
+                
+        re_email_list = []
+        for address in api_response['value']:
+            try:
+                emails = (address['address'])
+                re_email_list.append(emails)
+            except:
+                pass
             
-            email_address_id = email_search['id']
+        # Finding missing email addresses to be added in RE
+        set1 = set(email_list)
+        set2 = set(re_email_list)
+        
+        missing = list(sorted(set1 - set2))
+        
+        for emails in missing:
+            print ("Email to be added")
+            global email_address
+            email_address = emails
+            # Figure the email type
+            types = address['type']
+            email_num = re.sub("[^0-9]", "", types)
+            email_type_list.append(email_num)
+            existing_max_count = int(max(email_type_list))
+            new_max_count = existing_max_count + 1
+            try:
+                incremental_max_count
+            except:
+                incremental_max_count = new_max_count
+            else:
+                incremental_max_count = incremental_max_count + 1            
+            global new_email_type
+            new_email_type = "Email " + str(incremental_max_count)
+            update_email()
             
-            url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
+        # Mark email_1 address as primary
+        url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/emailaddresses" % constituent_id
+        
+        # Blackbaud API GET request
+        get_request()
+        
+        for email_search in api_response['value']:
+            if email_search['address'] == email_1:
+                
+                email_address_id = email_search['id']
+                
+                url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
+                
+                params = """
+                {
+                    "primary": "true"
+                }
+                """
+                
+                patch_request()
+                break
+        
+        # Check and update phone
+        # Retrieve Phone List
+        url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/phones" % constituent_id
+        
+        params = {
+            #'search_text':search_text
+        }
+        
+        # Blackbaud API GET request 
+        get_request()
+        
+        # Check for missing phone numbers
+        global phone_search_api_response
+        phone_search_api_response = api_response
+        
+        global phone_type_list
+        phone_type_list=[]
+        phone_list = [re.sub("[^0-9]", "", phone_1)]
+        
+        re_phone_list = []
+        for address in api_response['value']:
+            try:
+                phone = re.sub("[^0-9]", "",(address['number']))
+                re_phone_list.append(phone)
+            except:
+                pass
             
+        # Finding missing phone numbers to be added in RE
+        set1 = set(phone_list)
+        set2 = set(re_phone_list)
+        
+        missing = list(sorted(set1 - set2))
+        
+        for phones in missing:
+            print ("Phone numbers to be added")
+            global phone_number
+            phone_number = "+" + str(phones)
+            # Figure the email type
+            types = address['type']
+            phone_num = re.sub("[^0-9]", "", types)
+            phone_type_list.append(phone_num)
+            existing_max_count = int(max(phone_type_list))
+            new_max_count = existing_max_count + 1
+            try:
+                incremental_max_count_phone
+            except:
+                incremental_max_count_phone = new_max_count
+            else:
+                incremental_max_count_phone = incremental_max_count_phone + 1            
+            global new_phone_type
+            new_phone_type = "Mobile " + str(incremental_max_count_phone)
+            update_phone()
+
+            # Mark phone_1 as primary
+            phone_number_id = api_response['id']
+
+            url = "https://api.sky.blackbaud.com/constituent/v1/phones/%s" % phone_number_id
+
             params = """
             {
                 "primary": "true"
@@ -844,94 +984,28 @@ def update_record():
             """
             
             patch_request()
-            break
-    
-    # Check and update phone
-    # Retrieve Phone List
-    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/phones" % constituent_id
-    
-    params = {
-        #'search_text':search_text
-    }
-    
-    # Blackbaud API GET request 
-    get_request()
-    
-    # Check for missing phone numbers
-    global phone_search_api_response
-    phone_search_api_response = api_response
-    
-    global phone_type_list
-    phone_type_list=[]
-    phone_list = [re.sub("[^0-9]", "", phone_1)]
-    
-    re_phone_list = []
-    for address in api_response['value']:
-        try:
-            phone = re.sub("[^0-9]", "",(address['number']))
-            re_phone_list.append(phone)
-        except:
-            pass
-        
-    # Finding missing phone numbers to be added in RE
-    set1 = set(phone_list)
-    set2 = set(re_phone_list)
-    
-    missing = list(sorted(set1 - set2))
-    
-    for phones in missing:
-        print ("Phone numbers to be added")
-        global phone_number
-        phone_number = "+" + str(phones)
-        # Figure the email type
-        types = address['type']
-        phone_num = re.sub("[^0-9]", "", types)
-        phone_type_list.append(phone_num)
-        existing_max_count = int(max(phone_type_list))
-        new_max_count = existing_max_count + 1
-        try:
-            incremental_max_count_phone
-        except:
-            incremental_max_count_phone = new_max_count
-        else:
-            incremental_max_count_phone = incremental_max_count_phone + 1            
-        global new_phone_type
-        new_phone_type = "Mobile " + str(incremental_max_count_phone)
-        update_phone()
+            
+            # Check and update Education details
+            # Check and update Organisation
+            # Check and update name
 
-        # Mark phone_1 as primary
-        phone_number_id = api_response['id']
+            # Update the completed table in DB
+            #with open('update.csv', 'r') as input_csv:
 
-        url = "https://api.sky.blackbaud.com/constituent/v1/phones/%s" % phone_number_id
+                # Skip the header row.
+            #    next(input_csv)
+            #    cur.copy_from(input_csv, 'updated_in_raisers_edge', sep=',')
 
-        params = """
-        {
-            "primary": "true"
-        }
-        """
-        
-        patch_request()
-  
-  
-  # Check and update Education details
-  # Check and update Organisation
-  # Check and update name
+            # Commit changes
+            #conn.commit()
 
-  # Update the completed table in DB
-  #with open('update.csv', 'r') as input_csv:
+            # Close DB connection
+            #cur.close()
+            #conn.close()
 
-      # Skip the header row.
-  #    next(input_csv)
-  #    cur.copy_from(input_csv, 'updated_in_raisers_edge', sep=',')
-
-  # Commit changes
-  #conn.commit()
-
-  # Close DB connection
-  #cur.close()
-  #conn.close()
-
-    sys.exit()
+            sys.exit()
+    except:
+        send_error_emails()
     
     
 count = 0
