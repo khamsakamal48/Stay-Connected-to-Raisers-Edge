@@ -3,13 +3,14 @@
 from cgitb import reset
 from datetime import datetime
 import email
-import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2, smtplib, ssl, json, time, imaplib, re
+import pysftp, json, requests, os, sys, csv, shutil, glob, pandas, psycopg2, smtplib, ssl, json, time, imaplib, re, fuzzywuzzy
 from soupsieve import match
 from unittest import case
 from urllib import response
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment
+from fuzzywuzzy import fuzz
 
 # Set current directory
 #os.chdir(os.path.dirname(sys.argv[0]))
@@ -985,8 +986,33 @@ def update_record():
             
             patch_request()
             
-            # Check and update Education details
             # Check and update Organisation
+            # Retrieve Relationship list
+            url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/relationships" % constituent_id
+            
+            get_request()
+            
+            for each_org_name in api_response['value']:
+                try:
+                    if fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()) > 90:
+                        relationship_id = each_org_name['id']
+                        
+                        url = "https://api.sky.blackbaud.com/constituent/v1/relationships/%s" % relationship_id
+                        
+                        params = """
+                        {
+                            "position": {position}
+                        }
+                        """
+            
+            # Check if the new Organisation exists in RE
+            # If exists, check and update position
+            # Else check if the organisation exists as a constituent
+            # Else add a new organisation
+            # Assign organisation to Alum
+            
+            # Check and update Education details
+            
             # Check and update name
 
             # Update the completed table in DB
