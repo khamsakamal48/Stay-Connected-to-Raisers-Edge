@@ -249,7 +249,7 @@ def search_for_constituent_id():
 
 def constituent_not_found_email():
   message = MIMEMultipart("alternative")
-  message["Subject"] = "Unable to find Alum in Raisers Edge for Stay Connected"
+  message["Subject"] = "Unable to find Constituent in Raisers Edge for Stay Connected"
   message["From"] = MAIL_USERN
   message["To"] = MAIL_USERN
 
@@ -837,7 +837,7 @@ def update_phone():
     # Blackbaud API POST request
     post_request()
     
-    #check_for_errors()
+    check_for_errors()
 
 def update_record():
     try:
@@ -994,20 +994,60 @@ def update_record():
             
             for each_org_name in api_response['value']:
                 try:
-                    if fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()) > 90:
+                    # Check if the new Organisation exists in RE
+                    if fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()) >= 90:
+                        
+                        # If exists, check and update position
                         relationship_id = each_org_name['id']
                         
                         url = "https://api.sky.blackbaud.com/constituent/v1/relationships/%s" % relationship_id
                         
                         params = """
                         {
-                            "position": {position}
+                            "position": {position},
+                            "is_primary_business": "true"
                         }
                         """
+                        
+                        patch_request()
+                        break
+                    
+                except:
+                    # Add a new relationship
+                    params = """
+                        {
+                            "constituent_id": "{constituent_id}",
+                            "is_primary_business": "true",
+                            "position": "{position}",
+                            "reciprocal_type": "Employer",
+                            "relation": "Employee",
+                            "type: "Organization",
+                            "name": "{organization}"
+                        }
+                        """
+                        
+                    url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
+                    
+                    patch_request()
+                    
+                else:
+                    # Add a new relationship
+                    params = """
+                        {
+                            "constituent_id": "{constituent_id}",
+                            "is_primary_business": "true",
+                            "position": "{position}",
+                            "reciprocal_type": "Employer",
+                            "relation": "Employee",
+                            "type: "Organization",
+                            "name": "{organization}"
+                        }
+                        """
+                        
+                    url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
+                    
+                    patch_request()
             
-            # Check if the new Organisation exists in RE
-            # If exists, check and update position
-            # Else check if the organisation exists as a constituent
             # Else add a new organisation
             # Assign organisation to Alum
             
