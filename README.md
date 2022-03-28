@@ -7,6 +7,9 @@ pip3 install pandas
 pip3 install pysftp
 pip3 install psycopg2
 pip3 install python-dotenv
+pip3 install fuzzywuzzy
+pip3 install python-Levenshtein
+
 
 If you encounter error on installing pyscopg2, then try:
 
@@ -16,7 +19,8 @@ pip3 install psycopg2-binary
 
 Install PostgreSQL
 
-Create stay_connected database
+Create stay-connected database
+CREATE DATABASE "stay-connected";
 
 Create tables
 
