@@ -1058,8 +1058,8 @@ def update_record():
     
     # for each_school in api_response['value']:
     #     try:
+    #         if each_school['school'] == "Indian Institute of Technology Bombay" and 
             
-    
     # Check and update name
     
     # Check and update Address
