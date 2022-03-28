@@ -118,7 +118,7 @@ def patch_request():
     # Request headers
     'Bb-Api-Subscription-Key': RE_API_KEY,
     'Authorization': 'Bearer ' + access_token,
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
     }
     
     global api_response
@@ -251,7 +251,7 @@ def search_for_constituent_id():
 
 def constituent_not_found_email():
   message = MIMEMultipart("alternative")
-  message["Subject"] = "Unable to find Constituent in Raisers Edge for Stay Connected"
+  message["Subject"] = subject
   message["From"] = MAIL_USERN
   message["To"] = MAIL_USERN
 
@@ -912,12 +912,10 @@ def update_record():
             
             url = "https://api.sky.blackbaud.com/constituent/v1/emailaddresses/%s" % email_address_id
             
-            params = """
-            {
+            params = json.dumps({
                 "primary": "true"
-            }
-            """
-            
+            })
+
             patch_request()
             break
     
@@ -979,11 +977,9 @@ def update_record():
 
         url = "https://api.sky.blackbaud.com/constituent/v1/phones/%s" % phone_number_id
 
-        params = """
-        {
-            "primary": "true"
-        }
-        """
+        params = json.dumps({
+                "primary": "true"
+            })
         
         patch_request()
         
@@ -992,20 +988,11 @@ def update_record():
     url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/relationships" % constituent_id
     
     get_request()
-        
-    # print ("Retreiving Relationship list")
-    # print (api_response)
     
     for each_org_name in api_response['value']:
         try:
             # Check if the new Organisation exists in RE
-            print ("Fuzz Ratio")
-            print (organization.lower())
-            print (each_org_name['name'])
-            print (fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()))
-            
-            while True:
-                if fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()) >= 90:
+            if fuzz.token_set_ratio(organization.lower(),each_org_name['name'].lower()) >= 90:
                     
                     # If exists, check and update position
                     relationship_id = each_org_name['id']
@@ -1013,38 +1000,14 @@ def update_record():
                     
                     url = "https://api.sky.blackbaud.com/constituent/v1/relationships/%s" % relationship_id
                     
-                    params = {
+                    params = json.dumps({
                         "position": position,
                         "is_primary_business": "true"
-                    }
-                    
-                    print (params)
+                    })
                     
                     patch_request()
-                    print (api_response)
+                    relationship_added = 1
                     break
-                
-            else:
-                # Add a new relationship
-                params = {
-                    "constituent_id": constituent_id,
-                    "is_primary_business": "true",
-                    "position": position,
-                    "reciprocal_type": "Employee",
-                    "type": "Employer",
-                    "relation": 
-                        {
-                            "type": "Organization",
-                            "name": organization
-                        }
-                }
-                    
-                url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
-                
-                post_request()
-                print (api_response)
-                break
-                
         except:
             # Add a new relationship
             params = {
@@ -1065,45 +1028,41 @@ def update_record():
             url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
             
             post_request()
-            print (api_response)
+            relationship_added = 1
             break
-            
-        # else:
-        #     # Add a new relationship
-        #     # params = """
-        #     #     {
-        #     #         "constituent_id": {{constituent_id}},
-        #     #         "is_primary_business": "true",
-        #     #         "position": "{position}",
-        #     #         "reciprocal_type": "Employer",
-        #     #         "relation": "Employee",
-        #     #         "type: "Organization",
-        #     #         "name": "{organization}"
-        #     #     }
-        #     #     """
-            
-        #     params = {
-        #             "constituent_id": constituent_id,
-        #             "is_primary_business": "true",
-        #             "position": position,
-        #             "reciprocal_type": "Employer",
-        #             "relation": "Employee",
-        #             "type": "Organization",
-        #             "name": organization
-        #     }
-            
-        #     print (params)
                 
-        #     url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
+    if relationship_added != 1:
+        # Add a new relationship
+        params = {
+            "constituent_id": constituent_id,
+            "is_primary_business": "true",
+            "position": position,
+            "reciprocal_type": "Employee",
+            "type": "Employer",
+            "relation": 
+                {
+                    "type": "Organization",
+                    "name": organization
+                }
+        }
             
-            #patch_request()
-    
-    # Else add a new organisation
-    # Assign organisation to Alum
+        url = "https://api.sky.blackbaud.com/constituent/v1/relationships"
+        
+        post_request()
     
     # Check and update Education details
+    # Get School List
+    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s/educations" % constituent_id
+    
+    get_request()
+    
+    # for each_school in api_response['value']:
+    #     try:
+            
     
     # Check and update name
+    
+    # Check and update Address
 
     # Update the completed table in DB
     #with open('update.csv', 'r') as input_csv:
@@ -1130,6 +1089,8 @@ while count != 1:
             search_text = emails
             search_for_constituent_id()
         except:
+            global subject
+            subject = "Unable to find Alums in Raisers Edge for Stay Connected"
             constituent_not_found_email()
 else:
     print ("Got constituent ID")
