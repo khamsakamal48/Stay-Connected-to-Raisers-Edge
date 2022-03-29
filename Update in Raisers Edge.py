@@ -1056,9 +1056,65 @@ def update_record():
     
     get_request()
     
-    # for each_school in api_response['value']:
-    #     try:
-    #         if each_school['school'] == "Indian Institute of Technology Bombay" and 
+    iitb_school_count = 0
+    for each_school in api_response['value']:
+        try:
+            if each_school['school'] == "Indian Institute of Technology Bombay":
+                # Increment the IITB School Count
+                iitb_school_count += 1
+                
+                # Get the education ID and other details to patch
+                education_id = each_school['id']
+                year_old = each_school['class_of']
+                hostel_old = each_school['social_organization']
+        except:
+            pass         
+    
+    # Only one IITB School exists
+    if iitb_school_count == 1:
+        # Will check if its safe to update
+        if year_old == class_of:
+            # Will check if hostel requires an update
+            if hostel_old == "Other" or hostel_old is None:
+                params = json.dumps({
+                    "social_organization": hostel
+                })
+                
+                url = "https://api.sky.blackbaud.com/constituent/v1/educations/%s" % education_id
+                
+                patch_request()
+                
+        else:
+            # Will send email to manually update
+            global subject
+            subject = "Unable to update Education details"
+            constituent_not_found_email()
+            
+    elif iitb_school_count == 0:
+        # Will Add a new education
+        url = "https://api.sky.blackbaud.com/constituent/v1/educations"
+        
+        params = {
+            "class_of": class_of,
+            "constituent_id": constituent_id,
+            "date_graduated": {
+                "y": class_of
+                },
+            "date_left": {
+                "y": class_of
+                },
+            "primary": "false",
+            "school": "Indian Institute of Technology Bombay",
+            "social_organization": hostel,
+            "status": "Graduated"
+        }
+        
+        post_request()
+        
+    else:
+        # Will send email to manually update
+        subject = "Unable to update Education details"
+        constituent_not_found_email()
             
     # Check and update name
     
