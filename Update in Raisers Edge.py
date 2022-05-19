@@ -58,6 +58,7 @@ with open('update.csv', 'w', encoding='UTF8') as update:
 
 # Convert from CSV to JSON
 os.system("csvjson --stream update.csv > update.json")
+#os.system("sed -i 's|null|\\\"\\\"|g' update.json")
 
 # Retrieve values to be updated in RE from update.json
 with open('update.json') as update:
@@ -245,9 +246,11 @@ def search_for_constituent_id():
   global api_response_constituent_search
   api_response_constituent_search = api_response
   
+  print(api_response_constituent_search)
+  
   global count
   # Get the count of results
-  count = api_response["count"]
+  count = api_response_constituent_search["count"]
 
 def constituent_not_found_email():
   message = MIMEMultipart("alternative")
@@ -789,13 +792,31 @@ def constituent_not_found_email():
   message.attach(emailbody)
   emailcontent = message.as_string()
 
-  # Create secure connection with server and send email
-  context = ssl._create_unverified_context()
-  with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
+#   # Create secure connection with server and send email
+#   context = ssl._create_unverified_context()
+#   with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
+#       server.login(MAIL_USERN, MAIL_PASSWORD)
+#       server.sendmail(
+#           MAIL_USERN, MAIL_USERN, emailcontent
+#       )
+
+  # Create a secure SSL context
+  context = ssl.create_default_context()
+  
+  # Try to log in to server and send email
+  try:
+      server = smtplib.SMTP(SMTP_URL,SMTP_PORT)
+      server.ehlo() # Can be omitted
+      server.starttls(context=context) # Secure the connection
+      server.ehlo() # Can be omitted
       server.login(MAIL_USERN, MAIL_PASSWORD)
-      server.sendmail(
-          MAIL_USERN, MAIL_USERN, emailcontent
-      )
+      server.sendmail(MAIL_USERN, MAIL_USERN, emailcontent)
+    # TODO: Send email here
+  except Exception as e:
+      # Print any error messages to stdout
+      print(e)
+  finally:
+      server.quit() 
 
   # Save copy of the sent email to sent items folder
   with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
@@ -842,6 +863,7 @@ def update_phone():
     check_for_errors()
 
 def update_record():
+    print("Starting update record")
     global constituent_id
     constituent_id = api_response_constituent_search["value"][0]["id"]
 
@@ -874,8 +896,10 @@ def update_record():
             pass
         
     # Finding missing email addresses to be added in RE
-    set1 = set(email_list)
+    set1 = set([i for i in email_list if i])
     set2 = set(re_email_list)
+    print(set1)
+    print(set2)
     
     missing = list(sorted(set1 - set2))
     
@@ -886,6 +910,9 @@ def update_record():
         # Figure the email type
         types = address['type']
         email_num = re.sub("[^0-9]", "", types)
+        # Checking if email_num is blank (when there's no Email 1, 2, etc.)
+        if email_num == "":
+            email_num = 0
         email_type_list.append(email_num)
         existing_max_count = int(max(email_type_list))
         new_max_count = existing_max_count + 1
@@ -1133,6 +1160,7 @@ def update_record():
     # Close DB connection
     #cur.close()
     #conn.close()
+    print("Ending update record")
 
     sys.exit()
     
@@ -1142,11 +1170,19 @@ while count != 1:
     for emails in {email_1, email_2, email_3, email_4, email_5, email_6}:
         try:
             global search_text
+            print(emails)
             search_text = emails
             search_for_constituent_id()
+            print("Searching for Alum")
+            print(count)
+            if count == 1:
+                break
         except:
-            global subject
-            subject = "Unable to find Alums in Raisers Edge for Stay Connected"
+            status = api_response["status"]
+            if status == 404:
+                subject = "Unable to find Alums because of Network Failure"
+            else:
+                subject = "Unable to find Alums in Raisers Edge for Stay Connected"
             constituent_not_found_email()
 else:
     print ("Got constituent ID")
