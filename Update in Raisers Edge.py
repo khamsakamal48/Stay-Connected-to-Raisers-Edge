@@ -522,7 +522,7 @@ def constituent_not_found_email():
                                       </tr>
                                       <tr>
                                           <td valign="top" style="text-align: center; padding: 10px 20px 15px 20px; font-family: sans-serif;  font-size: 20px; line-height: 25px; color: #ffffff;">
-                                              <p style="margin: 0;">I couldn't find below Alum in Raiser's Edge.</p>
+                                              <p style="margin: 0;">I couldn't update below Alum in Raiser's Edge.<br>Kindly refer the subject of email to identify which field I couldn't update.</p>
                                           </td>
                                       </tr>
                                     </table>
@@ -1100,7 +1100,7 @@ def update_record():
     # Only one IITB School exists
     if iitb_school_count == 1:
         # Will check if its safe to update
-        if year_old == class_of:
+        if int(year_old) == int(class_of):
             # Will check if hostel requires an update
             if hostel_old == "Other" or hostel_old is None:
                 params = json.dumps({
@@ -1113,6 +1113,7 @@ def update_record():
                 
         else:
             # Will send email to manually update
+            print("I am here")
             global subject
             subject = "Unable to update Education details"
             constituent_not_found_email()
