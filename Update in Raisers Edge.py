@@ -1145,6 +1145,18 @@ def update_record():
         constituent_not_found_email()
             
     # Check and update name
+    # Get constituent's first and last name
+    url = "https://api.sky.blackbaud.com/constituent/v1/constituents/%s" % constituent_id
+    
+    get_request()
+    
+    first_name_re = api_response["first"]
+    last_name_re = api_response["last"]
+    
+    if first_name != first_name_re or last_name != last_name_re:
+        # Will send email to manually update
+        subject = "Unable to update Name of Alum"
+        constituent_not_found_email()
     
     # Check and update Address
 
