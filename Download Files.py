@@ -12,6 +12,7 @@ import datetime
 import time
 import numpy as np
 import phonenumbers
+import csv
 
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
@@ -66,6 +67,7 @@ def housekeeping():
     logging.info('Doing Housekeeping')
 
     # Change Directory
+    os.chdir(owd)
     os.chdir('Files')
 
     # Housekeeping
@@ -98,8 +100,6 @@ def connect_to_sftp():
             for each_file in files:
                 # Download file
                 sftp.get(each_file)
-                # Remove file
-                # sftp.remove(each_file)
 
     # Change Directory
     os.chdir(owd)
@@ -113,19 +113,16 @@ def create_dataframe():
 
     # Iterate over the list of filepaths & load each file.
     for each_file in multiple_files:
-        df = pd.read_csv(each_file, on_bad_lines='skip', engine='python')
+        df = pd.read_csv(each_file, quoting=csv.QUOTE_NONE)
         data = pd.concat([data, df])
 
     data = data.drop_duplicates().reset_index(drop=True).copy()
 
     # Data Processing
     data = pre_process(data).copy()
+    data = data.drop_duplicates().reset_index(drop=True).copy()
 
-    # Save to a file
-    data.drop_duplicates().reset_index(drop=True).to_parquet('Database/Stay Connected.parquet', index=False)
-
-    # Change Directory
-    os.chdir(owd)
+    return data
 
 def pre_process(data):
     # Remove column
@@ -331,6 +328,17 @@ def attach_file_to_email(message, filename):
     # Attach the file to the message
     message.attach(file_attachment)
 
+def find_remaining_data(all_df, partial_df):
+    logging.info('Identifying missing data between two Dataframes')
+
+    # Change directory
+    os.chdir(owd)
+
+    # Identify data present in all_df but missing in partial_df
+    remaining_data = all_df[~all_df['id'].isin(partial_df['id'])].copy()
+
+    remaining_data.to_parquet('Database/To be uploaded.parquet', index=False)
+
 try:
     # Set current directory
     set_directory()
@@ -348,7 +356,13 @@ try:
     connect_to_sftp()
 
     # Merge to a single CSV
-    create_dataframe()
+    data = create_dataframe().copy()
+
+    # Load data that's already uploaded
+    completed = pd.read_parquet('Database/Completed.parquet')
+
+    # Find data to be uploaded
+    find_remaining_data(data, completed)
 
 except Exception as Argument:
     logging.error(Argument)

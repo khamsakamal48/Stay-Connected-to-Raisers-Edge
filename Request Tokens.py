@@ -1,47 +1,65 @@
-#!/usr/bin/env python3
-
-import json, requests, os, sys
-
-# Set current directory
-#os.chdir(os.path.dirname(sys.argv[0]))
-os.chdir(os.getcwd())
+import json
+import requests
+import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+def set_directory():
+    os.chdir(os.getcwd())
 
-# Retrieve contents from .env file
-# Get authorization code by encoding client_id:client_secret at https://www.base64encode.org
-AUTH_CODE = os.getenv("AUTH_CODE")
-REDIRECT_URL = os.getenv("REDIRECT_URL")
-CLIENT_ID = os.getenv("CLIENT_ID")
+def load_env():
+    global AUTH_CODE, REDIRECT_URL, CLIENT_ID
 
-# Blackbaud Token URL
-url = 'https://oauth2.sky.blackbaud.com/token'
+    load_dotenv()
 
-url_for_user = "https://oauth2.sky.blackbaud.com/authorization?client_id=%s&response_type=code&redirect_uri=%s&state=fdf80155" % (CLIENT_ID, REDIRECT_URL)
+    # Retrieve contents from .env file
+    # Get authorization code by encoding client_id:client_secret at https://www.base64encode.org
+    AUTH_CODE = os.getenv("AUTH_CODE")
+    REDIRECT_URL = os.getenv("REDIRECT_URL")
+    CLIENT_ID = os.getenv("CLIENT_ID")
 
-print("Please go to this link to get your access code " + url_for_user)
+def get_token():
+    # Blackbaud Token URL
+    url = 'https://oauth2.sky.blackbaud.com/token'
 
-access_code = input("Enter Access Code: ")
+    url_for_user = f'https://oauth2.sky.blackbaud.com/authorization?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URL}&state=fdf80155'
 
-# Request Headers for Blackbaud API request
-headers = {
-    # Request headers
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Authorization': 'Basic ' + AUTH_CODE
-}
+    print("Please go to this link to get your access code " + url_for_user)
 
-# Request parameters for Blackbaud API request
-data = {
-    'grant_type': 'authorization_code',
-    'redirect_uri': REDIRECT_URL,
-    'code': access_code
-}
+    access_code = input("Enter Access Code: ")
 
-# API Request
-response = requests.post(url, data=data, headers=headers).json()
+    # Request Headers for Blackbaud API request
+    headers = {
+        # Request headers
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + AUTH_CODE
+    }
 
-# Write output to JSON file
-with open("access_token_output.json", "w") as response_output:
-    json.dump(response, response_output, ensure_ascii=False, sort_keys=True, indent=4)
+    # Request parameters for Blackbaud API request
+    data = {
+        'grant_type': 'authorization_code',
+        'redirect_uri': REDIRECT_URL,
+        'code': access_code
+    }
+
+    # API Request
+    response = requests.post(url, data=data, headers=headers).json()
+
+    # Write output to JSON file
+    with open("access_token_output.json", "w") as response_output:
+        json.dump(response, response_output, ensure_ascii=False, sort_keys=True, indent=4)
+
+try:
+
+    # Set current directory
+    set_directory()
+
+    # Load env variables
+    load_env()
+
+    # Blackbaud Token URL
+    get_token()
+
+except Exception as Argument:
+    print(Argument)
+    pass

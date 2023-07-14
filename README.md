@@ -14,6 +14,7 @@ pip install email-validator
 pip install phonenumbers
 pip install pyarrow
 pip install fastparquet
+pip install geopy
 ```
 
 ## Create a .env file with below parameters
@@ -33,4 +34,14 @@ IMAP_URL=
 IMAP_PORT=
 SMTP_URL=
 SMTP_PORT=
+SEND_TO=
 ```
+## How to set up?
+
+### 1. Clone the repository
+
+```shell
+git clone https://github.com/khamsakamal48/Stay-Connected-to-Raisers-Edge.git
+```
+
+### 2. 
