@@ -81,7 +81,7 @@ def start_logging():
     # Get File Name of existing script
     process_name = os.path.basename(__file__).replace('.py', '').replace(' ', '_')
 
-    logging.basicConfig(filename=f'Logs/{process_name}.log', format='%(asctime)s %(levelname)s %(process)d %(message)s', filemode='w', level=logging.INFO)
+    logging.basicConfig(filename=f'Logs/{process_name}.log', format='%(asctime)s %(levelname)s %(process)d %(message)s', filemode='w', level=logging.DEBUG)
 
     # Printing the output to file for debugging
     logging.info('Starting the Script')
