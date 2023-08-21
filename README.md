@@ -15,6 +15,9 @@ pip install phonenumbers
 pip install pyarrow
 pip install fastparquet
 pip install geopy
+pip install nameparser
+pip install msal
+pip install requests
 ```
 
 ## Create a .env file with below parameters
