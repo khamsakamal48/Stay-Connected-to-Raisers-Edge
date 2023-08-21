@@ -1,24 +1,17 @@
 import pandas as pd
 import pysftp
 import os
-import shutil
 import glob
-import pandas
 import logging
-import smtplib
-import ssl
-import imaplib
 import datetime
-import time
 import numpy as np
 import phonenumbers
 import csv
+import base64
+import msal
+import requests
 
 from dotenv import load_dotenv
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
-from jinja2 import Environment
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
 
@@ -31,7 +24,7 @@ def set_directory():
 def load_env():
     logging.info('Setting Environment variables')
 
-    global HOST, PORT, USERNAME, PASSWORD, SOURCE, MAIL_USERN, MAIL_PASSWORD, IMAP_URL, IMAP_PORT, SMTP_URL, SMTP_PORT, SEND_TO
+    global HOST, PORT, USERNAME, PASSWORD, SOURCE, O_CLIENT_ID, CLIENT_SECRET, TENANT_ID, FROM, CC_TO, ERROR_EMAILS_TO, SEND_TO
 
     load_dotenv()
 
@@ -41,13 +34,13 @@ def load_env():
     USERNAME = os.getenv("USERN")
     PASSWORD = os.getenv("PASSWORD")
     SOURCE = os.getenv("SOURCE_PATH")
-    MAIL_USERN = os.getenv('MAIL_USERN')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    IMAP_URL = os.getenv('IMAP_URL')
-    IMAP_PORT = os.getenv('IMAP_PORT')
-    SMTP_URL = os.getenv('SMTP_URL')
-    SMTP_PORT = os.getenv('SMTP_PORT')
+    O_CLIENT_ID = os.getenv('O_CLIENT_ID')
+    CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+    TENANT_ID = os.getenv('TENANT_ID')
+    FROM = os.getenv('FROM')
     SEND_TO = os.getenv('SEND_TO')
+    CC_TO = eval(os.getenv('CC_TO'))
+    ERROR_EMAILS_TO = eval(os.getenv('ERROR_EMAILS_TO'))
 
 def start_logging():
     global process_name
@@ -219,114 +212,134 @@ def clean_linkedin(url):
 def send_error_emails(subject):
     logging.info('Sending email for an error')
 
-    message = MIMEMultipart()
-    message["Subject"] = subject
-    message["From"] = MAIL_USERN
-    message["To"] = SEND_TO
+    authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
-    # Adding Reply-to header
-    message.add_header('reply-to', MAIL_USERN)
+    app = msal.ConfidentialClientApplication(
+        client_id=O_CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=authority
+    )
 
-    TEMPLATE = """
-    <table style="background-color: #ffffff; border-color: #ffffff; width: auto; margin-left: auto; margin-right: auto;">
-    <tbody>
-    <tr style="height: 127px;">
-    <td style="background-color: #363636; width: 100%; text-align: center; vertical-align: middle; height: 127px;">&nbsp;
-    <h1><span style="color: #ffffff;">&nbsp;Raiser's Edge Automation: {{job_name}} Failed</span>&nbsp;</h1>
-    </td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="width: 100%; height: 18px; background-color: #ffffff; border-color: #ffffff; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #455362;">This is to notify you that execution of Auto-updating Alumni records has failed.</span>&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 61px;">
-    <td style="width: 100%; background-color: #2f2f2f; height: 61px; text-align: center; vertical-align: middle;">
-    <h2><span style="color: #ffffff;">Job details:</span></h2>
-    </td>
-    </tr>
-    <tr style="height: 52px;">
-    <td style="height: 52px;">
-    <table style="background-color: #2f2f2f; width: 100%; margin-left: auto; margin-right: auto; height: 42px;">
-    <tbody>
-    <tr>
-    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Job :</span>&nbsp;</td>
-    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{{job_name}}&nbsp;</td>
-    </tr>
-    <tr>
-    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Failed on :</span>&nbsp;</td>
-    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{{current_time}}&nbsp;</td>
-    </tr>
-    </tbody>
-    </table>
-    </td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; width: 100%; background-color: #ffffff; text-align: center; vertical-align: middle;">Below is the detailed error log,</td>
-    </tr>
-    <tr style="height: 217.34375px;">
-    <td style="height: 217.34375px; background-color: #f8f9f9; width: 100%; text-align: left; vertical-align: middle;">{{error_log_message}}</td>
-    </tr>
-    </tbody>
-    </table>
-    """
+    scopes = ["https://graph.microsoft.com/.default"]
 
-    # Create a text/html message from a rendered template
-    emailbody = MIMEText(
-        Environment().from_string(TEMPLATE).render(
+    result = None
+    result = app.acquire_token_silent(scopes, account=None)
+
+    if not result:
+        result = app.acquire_token_for_client(scopes=scopes)
+
+        TEMPLATE = """
+        <table style="background-color: #ffffff; border-color: #ffffff; width: auto; margin-left: auto; margin-right: auto;">
+        <tbody>
+        <tr style="height: 127px;">
+        <td style="background-color: #363636; width: 100%; text-align: center; vertical-align: middle; height: 127px;">&nbsp;
+        <h1><span style="color: #ffffff;">&nbsp;Raiser's Edge Automation: {job_name} Failed</span>&nbsp;</h1>
+        </td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="width: 100%; height: 18px; background-color: #ffffff; border-color: #ffffff; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #455362;">This is to notify you that execution of Auto-updating Alumni records has failed.</span>&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 61px;">
+        <td style="width: 100%; background-color: #2f2f2f; height: 61px; text-align: center; vertical-align: middle;">
+        <h2><span style="color: #ffffff;">Job details:</span></h2>
+        </td>
+        </tr>
+        <tr style="height: 52px;">
+        <td style="height: 52px;">
+        <table style="background-color: #2f2f2f; width: 100%; margin-left: auto; margin-right: auto; height: 42px;">
+        <tbody>
+        <tr>
+        <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Job :</span>&nbsp;</td>
+        <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{job_name}&nbsp;</td>
+        </tr>
+        <tr>
+        <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Failed on :</span>&nbsp;</td>
+        <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{current_time}&nbsp;</td>
+        </tr>
+        </tbody>
+        </table>
+        </td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; width: 100%; background-color: #ffffff; text-align: center; vertical-align: middle;">Below is the detailed error log,</td>
+        </tr>
+        <tr style="height: 217.34375px;">
+        <td style="height: 217.34375px; background-color: #f8f9f9; width: 100%; text-align: left; vertical-align: middle;">{error_log_message}</td>
+        </tr>
+        </tbody>
+        </table>
+        """
+    
+        # Create a text/html message from a rendered template
+        emailbody = TEMPLATE.format(
             job_name=subject,
             current_time=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             error_log_message=Argument
-        ), "html"
-    )
-
-    # Add HTML parts to MIMEMultipart message
-    # The email client will try to render the last part first
-    try:
-        message.attach(emailbody)
-        attach_file_to_email(message, f'Logs/{process_name}.log')
-        emailcontent = message.as_string()
-
-    except:
-        message.attach(emailbody)
-        emailcontent = message.as_string()
-
-    # Create secure connection with server and send email
-    context = ssl._create_unverified_context()
-    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
-        server.login(MAIL_USERN, MAIL_PASSWORD)
-        server.sendmail(
-            MAIL_USERN, SEND_TO, emailcontent
         )
 
-    # Save copy of the sent email to sent items folder
-    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
-        imap.login(MAIL_USERN, MAIL_PASSWORD)
-        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), emailcontent.encode('utf8'))
-        imap.logout()
+        # Set up attachment data
+        with open(f'Logs/{process_name}.log', 'rb') as f:
+            attachment_content = f.read()
+        attachment_content = base64.b64encode(attachment_content).decode('utf-8')
 
-def attach_file_to_email(message, filename):
-    logging.info('Attach file to email')
+        if "access_token" in result:
 
-    # Open the attachment file for reading in binary mode, and make it a MIMEApplication class
-    with open(filename, "rb") as f:
-        file_attachment = MIMEApplication(f.read())
+            endpoint = f'https://graph.microsoft.com/v1.0/users/{FROM}/sendMail'
 
-    # Add header/name to the attachments
-    file_attachment.add_header(
-        "Content-Disposition",
-        f"attachment; filename= {filename.replace('Logs', '')}",
-    )
+            email_msg = {
+                'Message': {
+                    'Subject': subject,
+                    'Body': {
+                        'ContentType': 'HTML',
+                        'Content': emailbody
+                    },
+                    'ToRecipients': get_recipients(ERROR_EMAILS_TO),
+                    'Attachments': [
+                        {
+                            '@odata.type': '#microsoft.graph.fileAttachment',
+                            'name': f'{process_name}.log',
+                            'contentBytes': attachment_content
+                        }
+                    ]
+                },
+                'SaveToSentItems': 'true'
+            }
 
-    # Attach the file to the message
-    message.attach(file_attachment)
+            requests.post(
+                endpoint,
+                headers={
+                    'Authorization': 'Bearer ' + result['access_token']
+                },
+                json=email_msg
+            )
+
+        else:
+            logging.info(result.get('error'))
+            logging.info(result.get('error_description'))
+            logging.info(result.get('correlation_id'))
+
+def get_recipients(email_list):
+    value = []
+
+    for email in email_list:
+        email = {
+            'emailAddress': {
+                'address': email
+            }
+        }
+
+        value.append(email)
+
+    return value
 
 def find_remaining_data(all_df, partial_df):
     logging.info('Identifying missing data between two Dataframes')

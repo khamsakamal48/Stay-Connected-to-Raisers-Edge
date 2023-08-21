@@ -1,36 +1,23 @@
 import requests
 import os
 import json
-import glob
-import smtplib
-import ssl
 import re
-import imaplib
 import datetime
 import logging
-import time
 import random
 import string
 import msal
 import base64
 import pandas as pd
-import numpy as np
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
-from jinja2 import Environment
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 from dotenv import load_dotenv
-from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from nameparser import HumanName
-from datetime import date
-from datetime import timedelta
 
 def set_directory():
     global owd
