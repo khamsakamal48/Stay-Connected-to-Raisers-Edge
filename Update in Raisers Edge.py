@@ -11,6 +11,8 @@ import logging
 import time
 import random
 import string
+import msal
+import base64
 import pandas as pd
 import numpy as np
 from geopy.geocoders import Nominatim
@@ -39,18 +41,19 @@ def set_directory():
 def load_env():
     logging.info('Setting Environment variables')
 
-    global MAIL_USERN, MAIL_PASSWORD, IMAP_URL, IMAP_PORT, SMTP_URL, SMTP_PORT, SEND_TO, RE_API_KEY
+    global O_CLIENT_ID, CLIENT_SECRET, TENANT_ID, FROM, CC_TO, ERROR_EMAILS_TO, SEND_TO, RE_API_KEY
 
     load_dotenv()
 
     # Retrieve contents from .env file
-    MAIL_USERN = os.getenv('MAIL_USERN')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    IMAP_URL = os.getenv('IMAP_URL')
-    IMAP_PORT = os.getenv('IMAP_PORT')
-    SMTP_URL = os.getenv('SMTP_URL')
-    SMTP_PORT = os.getenv('SMTP_PORT')
+    RE_API_KEY = os.getenv('RE_API_KEY')
+    O_CLIENT_ID = os.getenv('O_CLIENT_ID')
+    CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+    TENANT_ID = os.getenv('TENANT_ID')
+    FROM = os.getenv('FROM')
     SEND_TO = os.getenv('SEND_TO')
+    CC_TO = eval(os.getenv('CC_TO'))
+    ERROR_EMAILS_TO = eval(os.getenv('ERROR_EMAILS_TO'))
     RE_API_KEY = os.getenv('RE_API_KEY')
 
 def start_logging():
@@ -90,114 +93,133 @@ def set_api_request_strategy():
 def send_error_emails(subject):
     logging.info('Sending email for an error')
 
-    message = MIMEMultipart()
-    message["Subject"] = subject
-    message["From"] = MAIL_USERN
-    message["To"] = SEND_TO
+    authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
-    # Adding Reply-to header
-    message.add_header('reply-to', MAIL_USERN)
+    app = msal.ConfidentialClientApplication(
+        client_id=O_CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=authority
+    )
 
-    TEMPLATE = """
-    <table style="background-color: #ffffff; border-color: #ffffff; width: auto; margin-left: auto; margin-right: auto;">
-    <tbody>
-    <tr style="height: 127px;">
-    <td style="background-color: #363636; width: 100%; text-align: center; vertical-align: middle; height: 127px;">&nbsp;
-    <h1><span style="color: #ffffff;">&nbsp;Raiser's Edge Automation: {{job_name}} Failed</span>&nbsp;</h1>
-    </td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="width: 100%; height: 18px; background-color: #ffffff; border-color: #ffffff; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #455362;">This is to notify you that execution of Auto-updating Alumni records has failed.</span>&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 61px;">
-    <td style="width: 100%; background-color: #2f2f2f; height: 61px; text-align: center; vertical-align: middle;">
-    <h2><span style="color: #ffffff;">Job details:</span></h2>
-    </td>
-    </tr>
-    <tr style="height: 52px;">
-    <td style="height: 52px;">
-    <table style="background-color: #2f2f2f; width: 100%; margin-left: auto; margin-right: auto; height: 42px;">
-    <tbody>
-    <tr>
-    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Job :</span>&nbsp;</td>
-    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{{job_name}}&nbsp;</td>
-    </tr>
-    <tr>
-    <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Failed on :</span>&nbsp;</td>
-    <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{{current_time}}&nbsp;</td>
-    </tr>
-    </tbody>
-    </table>
-    </td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; background-color: #ffffff;">&nbsp;</td>
-    </tr>
-    <tr style="height: 18px;">
-    <td style="height: 18px; width: 100%; background-color: #ffffff; text-align: center; vertical-align: middle;">Below is the detailed error log,</td>
-    </tr>
-    <tr style="height: 217.34375px;">
-    <td style="height: 217.34375px; background-color: #f8f9f9; width: 100%; text-align: left; vertical-align: middle;">{{error_log_message}}</td>
-    </tr>
-    </tbody>
-    </table>
-    """
+    scopes = ["https://graph.microsoft.com/.default"]
 
-    # Create a text/html message from a rendered template
-    emailbody = MIMEText(
-        Environment().from_string(TEMPLATE).render(
+    result = None
+    result = app.acquire_token_silent(scopes, account=None)
+
+    if not result:
+        result = app.acquire_token_for_client(scopes=scopes)
+
+        TEMPLATE = """
+        <table style="background-color: #ffffff; border-color: #ffffff; width: auto; margin-left: auto; margin-right: auto;">
+        <tbody>
+        <tr style="height: 127px;">
+        <td style="background-color: #363636; width: 100%; text-align: center; vertical-align: middle; height: 127px;">&nbsp;
+        <h1><span style="color: #ffffff;">&nbsp;Raiser's Edge Automation: {job_name} Failed</span>&nbsp;</h1>
+        </td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="width: 100%; height: 18px; background-color: #ffffff; border-color: #ffffff; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #455362;">This is to notify you that execution of Auto-updating Alumni records has failed.</span>&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff; border-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 61px;">
+        <td style="width: 100%; background-color: #2f2f2f; height: 61px; text-align: center; vertical-align: middle;">
+        <h2><span style="color: #ffffff;">Job details:</span></h2>
+        </td>
+        </tr>
+        <tr style="height: 52px;">
+        <td style="height: 52px;">
+        <table style="background-color: #2f2f2f; width: 100%; margin-left: auto; margin-right: auto; height: 42px;">
+        <tbody>
+        <tr>
+        <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Job :</span>&nbsp;</td>
+        <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{job_name}&nbsp;</td>
+        </tr>
+        <tr>
+        <td style="width: 50%; text-align: center; vertical-align: middle;">&nbsp;<span style="color: #ffffff;">Failed on :</span>&nbsp;</td>
+        <td style="background-color: #ff8e2d; width: 50%; text-align: center; vertical-align: middle;">&nbsp;{current_time}&nbsp;</td>
+        </tr>
+        </tbody>
+        </table>
+        </td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; background-color: #ffffff;">&nbsp;</td>
+        </tr>
+        <tr style="height: 18px;">
+        <td style="height: 18px; width: 100%; background-color: #ffffff; text-align: center; vertical-align: middle;">Below is the detailed error log,</td>
+        </tr>
+        <tr style="height: 217.34375px;">
+        <td style="height: 217.34375px; background-color: #f8f9f9; width: 100%; text-align: left; vertical-align: middle;">{error_log_message}</td>
+        </tr>
+        </tbody>
+        </table>
+        """
+
+        # Create a text/html message from a rendered template
+        emailbody = TEMPLATE.format(
             job_name=subject,
             current_time=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             error_log_message=Argument
-        ), "html"
-    )
-
-    # Add HTML parts to MIMEMultipart message
-    # The email client will try to render the last part first
-    try:
-        message.attach(emailbody)
-        attach_file_to_email(message, f'Logs/{process_name}.log')
-        emailcontent = message.as_string()
-
-    except:
-        message.attach(emailbody)
-        emailcontent = message.as_string()
-
-    # Create secure connection with server and send email
-    context = ssl._create_unverified_context()
-    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
-        server.login(MAIL_USERN, MAIL_PASSWORD)
-        server.sendmail(
-            MAIL_USERN, SEND_TO, emailcontent
         )
 
-    # Save copy of the sent email to sent items folder
-    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
-        imap.login(MAIL_USERN, MAIL_PASSWORD)
-        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), emailcontent.encode('utf8'))
-        imap.logout()
+        # Set up attachment data
+        with open(f'Logs/{process_name}.log', 'rb') as f:
+            attachment_content = f.read()
+        attachment_content = base64.b64encode(attachment_content).decode('utf-8')
 
-def attach_file_to_email(message, filename):
-    logging.info('Attach file to email')
+        if "access_token" in result:
+            endpoint = f'https://graph.microsoft.com/v1.0/users/{FROM}/sendMail'
 
-    # Open the attachment file for reading in binary mode, and make it a MIMEApplication class
-    with open(filename, "rb") as f:
-        file_attachment = MIMEApplication(f.read())
+            email_msg = {
+                'Message': {
+                    'Subject': subject,
+                    'Body': {
+                        'ContentType': 'HTML',
+                        'Content': emailbody
+                    },
+                    'ToRecipients': get_recipients(ERROR_EMAILS_TO),
+                    'Attachments': [
+                        {
+                            '@odata.type': '#microsoft.graph.fileAttachment',
+                            'name': f'{process_name}.log',
+                            'contentBytes': attachment_content
+                        }
+                    ]
+                },
+                'SaveToSentItems': 'true'
+            }
 
-    # Add header/name to the attachments
-    file_attachment.add_header(
-        "Content-Disposition",
-        f"attachment; filename= {filename.replace('Logs', '')}",
-    )
+            requests.post(
+                endpoint,
+                headers={
+                    'Authorization': 'Bearer ' + result['access_token']
+                },
+                json=email_msg
+            )
 
-    # Attach the file to the message
-    message.attach(file_attachment)
+        else:
+            logging.info(result.get('error'))
+            logging.info(result.get('error_description'))
+            logging.info(result.get('correlation_id'))
+
+def get_recipients(email_list):
+    value = []
+
+    for email in email_list:
+        email = {
+            'emailAddress': {
+                'address': email
+            }
+        }
+
+        value.append(email)
+
+    return value
 
 def retrieve_token():
 
@@ -624,7 +646,7 @@ def initialize_nominatim():
     geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1, return_value_on_exception=None)
 
 def update_employment(each_row, re_id):
-    logging.info('Proceeding to update location')
+    logging.info('Proceeding to update employment')
 
     org = each_row['organization']
     position = each_row['position']
@@ -847,58 +869,73 @@ def send_mail_different_education(re_data, each_row, subject, re_id):
 
     logging.info('Sending email for different education')
 
-    message = MIMEMultipart()
-    message["Subject"] = subject
-    message["From"] = MAIL_USERN
-    message["To"] = SEND_TO
+    authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
-    # Adding Reply-to header
-    message.add_header('reply-to', MAIL_USERN)
+    app = msal.ConfidentialClientApplication(
+        client_id=O_CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=authority
+    )
 
-    TEMPLATE = """
-    <p>Hi,</p>
-    <p>This is to inform you that the Education data provided by Alum is different than that exists in Raisers Edge.</p>
-    <p><a href="https://host.nxt.blackbaud.com/constituent/records/{{constituent_id}}?envId=p-dzY8gGigKUidokeljxaQiA&amp;svcId=renxt" target="_blank"><strong>Open in RE</strong></a></p>
-    <p>&nbsp;</p>
-    <p>Below is the data for your comparison:</p>
-    <h3>Raisers Edge Data:</h3>
-    <p>{{re_data}}</p>
-    <p>&nbsp;</p>
-    <h3>Provided by Alum:</h3>
-    <p>{{education_data}}</p>
-    <p>&nbsp;</p>
-    <p>Thanks &amp; Regards</p>
-    <p>A Bot.</p>
-    """
+    scopes = ["https://graph.microsoft.com/.default"]
 
-    # Create a text/html message from a rendered template
-    emailbody = MIMEText(
-        Environment().from_string(TEMPLATE).render(
+    result = None
+    result = app.acquire_token_silent(scopes, account=None)
+
+    if not result:
+        result = app.acquire_token_for_client(scopes=scopes)
+
+        TEMPLATE = """
+        <p>Hi,</p>
+        <p>This is to inform you that the Education data provided by Alum is different than that exists in Raisers Edge.</p>
+        <p><a href="https://host.nxt.blackbaud.com/constituent/records/{constituent_id}?envId=p-dzY8gGigKUidokeljxaQiA&amp;svcId=renxt" target="_blank"><strong>Open in RE</strong></a></p>
+        <p>&nbsp;</p>
+        <p>Below is the data for your comparison:</p>
+        <h3>Raisers Edge Data:</h3>
+        <p>{re_data}</p>
+        <p>&nbsp;</p>
+        <h3>Provided by Alum:</h3>
+        <p>{education_data}</p>
+        <p>&nbsp;</p>
+        <p>Thanks &amp; Regards</p>
+        <p>A Bot.</p>
+        """
+
+        # Create a text/html message from a rendered template
+        emailbody = TEMPLATE.format(
             constituent_id=re_id,
             re_data=re_data,
             education_data=each_row
-        ), "html"
-    )
-
-    # Add HTML parts to MIMEMultipart message
-    # The email client will try to render the last part first
-    message.attach(emailbody)
-    emailcontent = message.as_string()
-
-    # Create secure connection with server and send email
-    context = ssl._create_unverified_context()
-    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
-        server.login(MAIL_USERN, MAIL_PASSWORD)
-        server.sendmail(
-            MAIL_USERN, SEND_TO, emailcontent
         )
 
-    # Save copy of the sent email to sent items folder
-    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
-        imap.login(MAIL_USERN, MAIL_PASSWORD)
-        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()),
-                    emailcontent.encode('utf8'))
-        imap.logout()
+        if "access_token" in result:
+
+            endpoint = f'https://graph.microsoft.com/v1.0/users/{FROM}/sendMail'
+
+            email_msg = {
+                'Message': {
+                    'Subject': subject,
+                    'Body': {
+                        'ContentType': 'HTML',
+                        'Content': emailbody
+                    },
+                    'ToRecipients': get_recipients(SEND_TO)
+                },
+                'SaveToSentItems': 'true'
+            }
+
+            requests.post(
+                endpoint,
+                headers={
+                    'Authorization': 'Bearer ' + result['access_token']
+                },
+                json=email_msg
+            )
+
+        else:
+            logging.info(result.get('error'))
+            logging.info(result.get('error_description'))
+            logging.info(result.get('correlation_id'))
 
 def update_names(each_row, re_id):
     logging.info('Proceeding to update names')
@@ -986,132 +1023,164 @@ def update_names(each_row, re_id):
 def send_mail_different_name(re_name, new_name, subject, re_id):
     logging.info('Sending email for different names')
 
-    message = MIMEMultipart()
-    message["Subject"] = subject
-    message["From"] = MAIL_USERN
-    message["To"] = SEND_TO
+    authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
-    # Adding Reply-to header
-    message.add_header('reply-to', MAIL_USERN)
+    app = msal.ConfidentialClientApplication(
+        client_id=O_CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=authority
+    )
 
-    TEMPLATE = """
-    <p>Hi,</p>
-    <p>This is to inform you that the name provided by Alum is different than that exists in Raisers Edge.</p>
-    <p>The new one has been updated in Raisers Edge, and the Existing name is stored as &#39;<u>Former Name</u>&#39; in RE.</p>
-    <p><a href="https://host.nxt.blackbaud.com/constituent/records/{{constituent_id}}?envId=p-dzY8gGigKUidokeljxaQiA&amp;svcId=renxt" target="_blank"><strong>Open in RE</strong></a></p>
-    <table align="left" border="1" cellpadding="1" cellspacing="1" style="width:500px">
-        <thead>
-            <tr>
-                <th scope="col">Existing Name</th>
-                <th scope="col">New Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="text-align:center">{{re_name}}</td>
-                <td style="text-align:center">{{new_name}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>Thanks &amp; Regards</p>
-    <p>A Bot.</p>
-    """
+    scopes = ["https://graph.microsoft.com/.default"]
 
-    # Create a text/html message from a rendered template
-    emailbody = MIMEText(
-        Environment().from_string(TEMPLATE).render(
+    result = None
+    result = app.acquire_token_silent(scopes, account=None)
+
+    if not result:
+        result = app.acquire_token_for_client(scopes=scopes)
+
+        TEMPLATE = """
+        <p>Hi,</p>
+        <p>This is to inform you that the name provided by Alum is different than that exists in Raisers Edge.</p>
+        <p>The new one has been updated in Raisers Edge, and the Existing name is stored as &#39;<u>Former Name</u>&#39; in RE.</p>
+        <p><a href="https://host.nxt.blackbaud.com/constituent/records/{constituent_id}?envId=p-dzY8gGigKUidokeljxaQiA&amp;svcId=renxt" target="_blank"><strong>Open in RE</strong></a></p>
+        <table align="left" border="1" cellpadding="1" cellspacing="1" style="width:500px">
+            <thead>
+                <tr>
+                    <th scope="col">Existing Name</th>
+                    <th scope="col">New Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align:center">{re_name}</td>
+                    <td style="text-align:center">{new_name}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>Thanks &amp; Regards</p>
+        <p>A Bot.</p>
+        """
+
+        # Create a text/html message from a rendered template
+        emailbody = TEMPLATE.format(
             constituent_id=re_id,
             re_name=re_name,
             new_name=new_name
-        ), "html"
-    )
-
-    # Add HTML parts to MIMEMultipart message
-    # The email client will try to render the last part first
-    message.attach(emailbody)
-    emailcontent = message.as_string()
-
-    # Create secure connection with server and send email
-    context = ssl._create_unverified_context()
-    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
-        server.login(MAIL_USERN, MAIL_PASSWORD)
-        server.sendmail(
-            MAIL_USERN, SEND_TO, emailcontent
         )
 
-    # Save copy of the sent email to sent items folder
-    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
-        imap.login(MAIL_USERN, MAIL_PASSWORD)
-        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), emailcontent.encode('utf8'))
-        imap.logout()
+        if "access_token" in result:
+
+            endpoint = f'https://graph.microsoft.com/v1.0/users/{FROM}/sendMail'
+
+            email_msg = {
+                'Message': {
+                    'Subject': subject,
+                    'Body': {
+                        'ContentType': 'HTML',
+                        'Content': emailbody
+                    },
+                    'ToRecipients': get_recipients(SEND_TO)
+                },
+                'SaveToSentItems': 'true'
+            }
+
+            requests.post(
+                endpoint,
+                headers={
+                    'Authorization': 'Bearer ' + result['access_token']
+                },
+                json=email_msg
+            )
+
+        else:
+            logging.info(result.get('error'))
+            logging.info(result.get('error_description'))
+            logging.info(result.get('correlation_id'))
 
 def constituent_not_found(data, subject, re_id):
     logging.info('Sending email for record not found')
 
-    message = MIMEMultipart()
-    message["Subject"] = subject
-    message["From"] = MAIL_USERN
-    message["To"] = SEND_TO
+    authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
-    # Adding Reply-to header
-    message.add_header('reply-to', MAIL_USERN)
-
-    TEMPLATE = """
-    <p>Hi,</p>
-    <p>This is to inform you that the application couldn't find an exact match for the constituent in Raisers Edge.</p>
-    <p>Below is the data from Stay Connected:</p>
-    {{data}}
-    <p>&nbsp;</p>
-    <table align="left" border="1" cellpadding="1" cellspacing="1" style="width:500px">
-        <thead>
-            <tr>
-                <th scope="col">System Record IDs identified</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="text-align:center">{{re_id}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <p>Thanks &amp; Regards</p>
-    <p>A Bot.</p>
-    """
-
-    # Create a text/html message from a rendered template
-    emailbody = MIMEText(
-        Environment().from_string(TEMPLATE).render(
-            re_id=re_id,
-            data=data,
-        ), "html"
+    app = msal.ConfidentialClientApplication(
+        client_id=O_CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=authority
     )
 
-    # Add HTML parts to MIMEMultipart message
-    # The email client will try to render the last part first
-    message.attach(emailbody)
-    emailcontent = message.as_string()
+    scopes = ["https://graph.microsoft.com/.default"]
 
-    # Create secure connection with server and send email
-    context = ssl._create_unverified_context()
-    with smtplib.SMTP_SSL(SMTP_URL, SMTP_PORT, context=context) as server:
-        server.login(MAIL_USERN, MAIL_PASSWORD)
-        server.sendmail(
-            MAIL_USERN, SEND_TO, emailcontent
+    result = None
+    result = app.acquire_token_silent(scopes, account=None)
+
+    if not result:
+        result = app.acquire_token_for_client(scopes=scopes)
+
+        TEMPLATE = """
+        <p>Hi,</p>
+        <p>This is to inform you that the application couldn't find an exact match for the constituent in Raisers Edge.</p>
+        <p>Below is the data from Stay Connected:</p>
+        {data}
+        <p>&nbsp;</p>
+        <table align="left" border="1" cellpadding="1" cellspacing="1" style="width:500px">
+            <thead>
+                <tr>
+                    <th scope="col">System Record IDs identified</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align:center">{re_id}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>Thanks &amp; Regards</p>
+        <p>A Bot.</p>
+        """
+
+        # Create a text/html message from a rendered template
+        emailbody = TEMPLATE.format(
+            re_id=re_id,
+            data=data
         )
 
-    # Save copy of the sent email to sent items folder
-    with imaplib.IMAP4_SSL(IMAP_URL, IMAP_PORT) as imap:
-        imap.login(MAIL_USERN, MAIL_PASSWORD)
-        imap.append('Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), emailcontent.encode('utf8'))
-        imap.logout()
+        if "access_token" in result:
+
+            endpoint = f'https://graph.microsoft.com/v1.0/users/{FROM}/sendMail'
+
+            email_msg = {
+                'Message': {
+                    'Subject': subject,
+                    'Body': {
+                        'ContentType': 'HTML',
+                        'Content': emailbody
+                    },
+                    'ToRecipients': get_recipients(SEND_TO)
+                },
+                'SaveToSentItems': 'true'
+            }
+
+            requests.post(
+                endpoint,
+                headers={
+                    'Authorization': 'Bearer ' + result['access_token']
+                },
+                json=email_msg
+            )
+
+        else:
+            logging.info(result.get('error'))
+            logging.info(result.get('error_description'))
+            logging.info(result.get('correlation_id'))
 
 try:
     # Set current directory
