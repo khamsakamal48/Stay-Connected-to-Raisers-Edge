@@ -6,6 +6,7 @@ sudo apt install python3-pip
 
 # Install Python packages
 pip install pandas
+pip install numpy
 pip install pysftp
 pip install python-dotenv
 pip install fuzzywuzzy
