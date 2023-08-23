@@ -1300,8 +1300,6 @@ try:
             logging.info('Multiple or no constituent found in Raisers Edge')
             constituent_not_found(row, 'Multiple or no constituent found in Raisers Edge', re_id)
 
-        break
-
 except Exception as Argument:
     logging.error(Argument)
     send_error_emails('Error while uploading data to RE | Stay Connected')
