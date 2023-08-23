@@ -39,7 +39,7 @@ def load_env():
     CLIENT_SECRET = os.getenv('CLIENT_SECRET')
     TENANT_ID = os.getenv('TENANT_ID')
     FROM = os.getenv('FROM')
-    SEND_TO = os.getenv('SEND_TO')
+    SEND_TO = eval(os.getenv('SEND_TO'))
     CC_TO = eval(os.getenv('CC_TO'))
     ERROR_EMAILS_TO = eval(os.getenv('ERROR_EMAILS_TO'))
     RE_API_KEY = os.getenv('RE_API_KEY')
@@ -250,6 +250,9 @@ def post_request_re(url, params):
 
     re_api_response = http.post(url, params=params, headers=headers, json=params)
 
+    if not re_api_response.ok:
+        raise Exception
+
     return re_api_response
 
 def patch_request_re(url, params):
@@ -277,7 +280,7 @@ def add_tags(source, tag, update, constituent_id):
         'comment': update,
         'parent_id': constituent_id,
         'value': source,
-        'date': datetime.now().replace(microsecond=0).isoformat()
+        'date': attribute_date
     }
 
     url = 'https://api.sky.blackbaud.com/constituent/v1/constituents/customfields'
@@ -295,7 +298,10 @@ def search_alum(email):
 
     df = api_to_df(api_response).copy()
 
-    return df['id'].values
+    if not df.empty:
+        return df['id'].values
+    else:
+        return []
 
 def api_to_df(response):
     logging.info('Loading API response to a DataFrame')
@@ -399,9 +405,24 @@ def update_phones(each_row, re_id):
 
             phones_in_re = re_data['number'].to_list()
 
+            # Adding last 10 characters of phone to the list as well
+            counter = len(phones_in_re)
+            i = 0
+
+            for p in phones_in_re:
+                i += 1
+                phones_in_re.append(p[-10:])
+
+                if i == counter:
+                    break
+
             # If exists, mark as primary
-            if new_phone in phones_in_re:
-                phone_id = re_data[['id', 'number']].drop_duplicates('number')[re_data[['id', 'number']].drop_duplicates('number')['number'] == new_phone]['id'].values[0]
+            if new_phone in phones_in_re or new_phone[-10:] in phones_in_re:
+                re_data = re_data[['id', 'number']].drop_duplicates('number').copy()
+
+                phone_id = re_data[
+                    re_data['number'].str.contains(new_phone[10:])
+                ]['id'].values[0]
 
                 url = f'https://api.sky.blackbaud.com/constituent/v1/phones/{int(phone_id)}'
 
@@ -452,13 +473,13 @@ def update_location(each_row, re_id):
     country = each_row['country']
 
     # Remove non-alphabetic characters
-    city = re.sub('[^a-zA-Z]+', '', city)
-    state = re.sub('[^a-zA-Z]+', '', state)
-    country = re.sub('[^a-zA-Z]+', '', country)
+    city = re.sub('[^a-zA-Z ]+', '', city)
+    state = re.sub('[^a-zA-Z ]+', '', state)
+    country = re.sub('[^a-zA-Z ]+', '', country)
 
     if country != '' or ~(country == 'India' and city == '' and state == ''):
         address = str(city) + ', ' + str(state) + ', ' + str(country)
-        address = address.replace('nan', ''). strip().replace(', ,', ', ')
+        address = address.replace('nan', '').strip().replace(', ,', ', ')
 
         location = geolocator.geocode(address, addressdetails=True, language='en')
 
@@ -804,54 +825,83 @@ def update_education(each_row, re_id):
         # Load to a dataframe
         re_data = api_to_df(api_response).copy()
 
-        re_data = re_data[re_data['school'] == 'Indian Institute of Technology Bombay'].reset_index(drop=True)
+        # Check if any education data exists
+        if not re_data.empty:
 
-        if re_data.shape[0] == 1:
-            education_id = int(re_data['id'][0])
+            re_data = re_data[re_data['school'] == 'Indian Institute of Technology Bombay'].reset_index(drop=True)
 
-            try:
-                re_class_of = int(re_data['class_of'][0])
-            except:
-                re_class_of = class_of
+            if re_data.shape[0] == 1:
 
-            # Check if existing Class of is blank or invalid
-            if class_of != '' and class_of == re_class_of:
+                education_id = int(re_data['id'][0])
 
-                url = f'https://api.sky.blackbaud.com/constituent/v1/educations/{education_id}'
+                try:
+                    re_class_of = int(re_data['class_of'][0])
+                except:
+                    re_class_of = class_of
 
-                params = {
-                    'class_of': class_of,
-                    'date_graduated': {
-                        'y': class_of
-                    },
-                    'date_left': {
-                        'y': class_of
-                    },
-                    'majors': [
-                        department
-                    ],
-                    'social_organization': hostel
-                }
+                # Check if existing Class of is blank or invalid
+                if class_of != '' and class_of == re_class_of:
 
-                # Delete blank values from JSON
-                for i in range(10):
-                    params = del_blank_values_in_json(params.copy())
+                    url = f'https://api.sky.blackbaud.com/constituent/v1/educations/{education_id}'
 
-                if params:
-                    patch_request_re(url, params)
+                    params = {
+                        'class_of': class_of,
+                        'date_graduated': {
+                            'y': class_of
+                        },
+                        'date_left': {
+                            'y': class_of
+                        },
+                        'majors': [
+                            department
+                        ],
+                        'social_organization': hostel
+                    }
 
-                    # Update Sync tags
-                    education = str(class_of) + ', ' + str(department) + ', ' + str(hostel)
-                    add_tags('Stay Connected - Auto | Education', 'Sync source', education.replace(', , ', ', ').strip()[:50], re_id)
+                    # Delete blank values from JSON
+                    for i in range(10):
+                        params = del_blank_values_in_json(params.copy())
 
+                    if params:
+                        patch_request_re(url, params)
+
+                        # Update Sync tags
+                        education = str(class_of) + ', ' + str(department) + ', ' + str(hostel)
+                        add_tags('Stay Connected - Auto | Education', 'Sync source', education.replace(', , ', ', ').strip()[:50], re_id)
+
+                else:
+                    # Different Education exists
+                    send_mail_different_education(re_data, each_row, 'Different education data exists in RE and the one provided by Alum', re_id)
             else:
-                # Different Education exists
-                send_mail_different_education(re_data, each_row, 'Different education data exists in RE and the one provided by Alum', re_id)
+                # Multiple education exists than what's provided
+                re_data_html = re_data.to_html(index=False, classes='table table-stripped')
+                each_row_html = each_row.to_html(index=False, classes='table table-stripped')
+                send_mail_different_education(re_data_html, each_row_html, 'Multiple education data exists in RE', re_id)
+
         else:
-            # Multiple education exists than what's provided
-            re_data_html = re_data.to_html(index=False, classes='table table-stripped')
-            each_row_html = each_row.to_html(index=False, classes='table table-stripped')
-            send_mail_different_education(re_data_html, each_row_html, 'Multiple education data exists in RE', re_id)
+            logging.info('Adding new education')
+            # Upload Education
+            url = 'https://api.sky.blackbaud.com/constituent/v1/educations'
+
+            params = {
+                'campus': department[:50],
+                'class_of': class_of,
+                'date_graduated': {
+                    'y': int(class_of)
+                },
+                'date_left': {
+                    'y': int(class_of)
+                },
+                'majors': [
+                    department[:50]
+                ],
+                'primary': True,
+                'school': 'Indian Institute of Technology Bombay',
+                'social_organization': hostel[:50],
+                'constituent_id': re_id
+            }
+
+            post_request_re(url, params)
 
 def send_mail_different_education(re_data, each_row, subject, re_id):
 
@@ -892,8 +942,8 @@ def send_mail_different_education(re_data, each_row, subject, re_id):
         # Create a text/html message from a rendered template
         emailbody = TEMPLATE.format(
             constituent_id=re_id,
-            re_data=re_data,
-            education_data=each_row
+            re_data=re_data.to_html(index=False),
+            education_data=pd.DataFrame(each_row).T.to_html(index=False)
         )
 
         if "access_token" in result:
@@ -1093,6 +1143,8 @@ def send_mail_different_name(re_name, new_name, subject, re_id):
 def constituent_not_found(data, subject, re_id):
     logging.info('Sending email for record not found')
 
+    data = pd.DataFrame(data).T.to_html(index=False)
+
     authority = f'https://login.microsoftonline.com/{TENANT_ID}'
 
     app = msal.ConfidentialClientApplication(
@@ -1194,6 +1246,7 @@ try:
 
     # Loop over Dataframe
     for index, row in data.iterrows():
+
         email = row['email']
 
         row = row.fillna('').copy()
@@ -1207,6 +1260,8 @@ try:
 
             # If identified, proceed (only one match found)
             logging.info(f'Preparing to update record with System record ID: {re_id}')
+
+            attribute_date = row['created_on'].isoformat()
 
             # Update Emails
             update_emails(row, re_id)
@@ -1245,7 +1300,7 @@ try:
             logging.info('Multiple or no constituent found in Raisers Edge')
             constituent_not_found(row, 'Multiple or no constituent found in Raisers Edge', re_id)
 
-        exit()
+        break
 
 except Exception as Argument:
     logging.error(Argument)
