@@ -165,8 +165,11 @@ def pre_process(data):
     # Clean LinkedIn URL
     data['linkedIn'] = data['linkedIn'].apply(lambda x: clean_linkedin(x))
 
+    # Convert object to Datetime
+    data['created_on'] = pd.to_datetime(data['created_on'], format='%m/%d/%Y %I:%M:%S %p')
+
     # Drop Columns
-    data = data.drop(columns=['status', 'created_on', 'interest', 'concentdetails']).copy()
+    data = data.drop(columns=['status', 'interest', 'concentdetails']).copy()
 
     return data
 
@@ -349,6 +352,8 @@ def find_remaining_data(all_df, partial_df):
 
     # Identify data present in all_df but missing in partial_df
     remaining_data = all_df[~all_df['id'].isin(partial_df['id'])].copy()
+
+    # Change the datetime format
 
     remaining_data.to_parquet('Database/To be uploaded.parquet', index=False)
 
