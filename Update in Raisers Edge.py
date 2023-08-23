@@ -9,6 +9,7 @@ import string
 import msal
 import base64
 import pandas as pd
+import numpy as np
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
@@ -1233,7 +1234,9 @@ try:
 
             # Update completed dataframe
             logging.info('Updating Database of synced records')
-            completed = pd.concat([completed, data], axis=0, ignore_index=True)
+            row['created_on'] = np.NaN
+            row = pd.DataFrame(row).T.copy()
+            completed = pd.concat([completed, row], axis=0, ignore_index=True)
             completed = completed.drop_duplicates().copy()
             completed.to_parquet('Database/Completed.parquet', index=False)
 
