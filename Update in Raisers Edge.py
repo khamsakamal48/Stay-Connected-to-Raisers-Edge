@@ -1313,6 +1313,13 @@ try:
             completed = completed.drop_duplicates().copy()
             completed.to_parquet('Database/Completed.parquet', index=False)
 
+            # Update pending dataframe
+            logging.info('Updating Database of pending records')
+            data.drop(index=data[
+                data['id'] == row['id']
+                ].index[0], inplace=True)
+            data.to_parquet('Database/To be uploaded.parquet', index=False)
+
             break
 
         else:
