@@ -954,7 +954,7 @@ def send_mail_different_education(re_data, each_row, subject, re_id):
         # Create a text/html message from a rendered template
         emailbody = TEMPLATE.format(
             constituent_id=re_id,
-            re_data=re_data.to_html(index=False),
+            re_data=pd.DataFrame(re_data).to_html(index=False),
             education_data=pd.DataFrame(each_row).T.to_html(index=False)
         )
 
