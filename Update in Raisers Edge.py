@@ -1308,10 +1308,12 @@ try:
             # Update completed dataframe
             logging.info('Updating Database of synced records')
             row['created_on'] = np.NaN
-            row = pd.DataFrame(row).T.copy()
-            completed = pd.concat([completed, row], axis=0, ignore_index=True)
+            row = pd.DataFrame(row).T
+            completed = pd.concat([completed, row], ignore_index=True)
             completed = completed.drop_duplicates().copy()
             completed.to_parquet('Database/Completed.parquet', index=False)
+
+            break
 
         else:
             # Else, send Email to DB Admin
