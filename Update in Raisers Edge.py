@@ -554,7 +554,7 @@ def update_location(each_row, re_id):
         url = 'https://api.sky.blackbaud.com/constituent/v1/addresses'
 
         # Ignore state for below countries
-        if country in ['Mauritius', 'Switzerland', 'France','Bahrain', 'Denmark']:
+        if country in ['Mauritius', 'Switzerland', 'France', 'Bahrain', 'Denmark', 'Netherlands']:
             state = ''
 
         params = {
