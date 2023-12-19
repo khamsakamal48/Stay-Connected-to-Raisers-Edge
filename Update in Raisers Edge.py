@@ -1315,9 +1315,9 @@ try:
 
             # Update pending dataframe
             logging.info('Updating Database of pending records')
-            data.drop(index=data[
-                data['id'] == row['id']
-                ].index[0], inplace=True)
+            index = data[data['id'] == row['id']].index[0]
+            logging.debug(index)
+            data.drop(index=index, inplace=True)
             data.to_parquet('Database/To be uploaded.parquet', index=False)
 
             break
