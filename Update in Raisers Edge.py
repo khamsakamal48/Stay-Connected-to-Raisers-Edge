@@ -883,12 +883,16 @@ def update_education(each_row, re_id):
 
                 else:
                     # Different Education exists
-                    send_mail_different_education(re_data, each_row, 'Different education data exists in RE and the one provided by Alum', re_id)
+                    send_mail_different_education(re_data.to_html(index=False, classes='table table-stripped'),
+                                                  each_row.to_html(index=False, classes='table table-stripped'),
+                                                  'Different education data exists in RE and the one provided by Alum',
+                                                  re_id)
             else:
                 # Multiple education exists than what's provided
                 re_data_html = re_data.to_html(index=False, classes='table table-stripped')
                 each_row_html = pd.DataFrame(each_row).T.to_html(index=False, classes='table table-stripped')
-                send_mail_different_education(re_data_html, each_row_html, 'Multiple education data exists in RE', re_id)
+                send_mail_different_education(re_data_html, each_row_html, 'Multiple education data exists in RE',
+                                              re_id)
 
         else:
             logging.info('Adding new education')
@@ -954,8 +958,8 @@ def send_mail_different_education(re_data, each_row, subject, re_id):
         # Create a text/html message from a rendered template
         emailbody = TEMPLATE.format(
             constituent_id=re_id,
-            re_data=pd.DataFrame(re_data).to_html(index=False),
-            education_data=pd.DataFrame(each_row).T.to_html(index=False)
+            re_data=re_data,
+            education_data=each_row
         )
 
         if "access_token" in result:
