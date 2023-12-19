@@ -1237,6 +1237,21 @@ def constituent_not_found(data, subject, re_id):
             logging.info(result.get('error_description'))
             logging.info(result.get('correlation_id'))
 
+
+def find_remaining_data(all_df, partial_df):
+    logging.info('Identifying missing data between two Dataframes')
+
+    # Change directory
+    os.chdir(owd)
+
+    # Identify data present in all_df but missing in partial_df
+    remaining_data = all_df[~all_df['id'].isin(partial_df['id'])].copy()
+
+    # Change the datetime format
+
+    remaining_data.to_parquet('Database/To be uploaded.parquet', index=False)
+
+
 try:
     # Set current directory
     set_directory()
@@ -1314,12 +1329,7 @@ try:
             completed.to_parquet('Database/Completed.parquet', index=False)
 
             # Update pending dataframe
-            logging.info('Updating Database of pending records')
-            logging.debug(row['id'])
-            index = data[data['id'] == row['id']].index[0]
-            logging.debug(index)
-            data.drop(index=index, inplace=True)
-            data.to_parquet('Database/To be uploaded.parquet', index=False)
+            find_remaining_data(data, completed)
 
             break
 
