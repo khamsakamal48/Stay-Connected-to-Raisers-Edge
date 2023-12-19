@@ -1317,6 +1317,7 @@ try:
 except Exception as Argument:
     logging.error(Argument)
     send_error_emails('Error while uploading data to RE | Stay Connected')
+    pass
 
 finally:
     # Stop Logging
