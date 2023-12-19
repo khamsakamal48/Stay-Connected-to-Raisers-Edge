@@ -1315,6 +1315,7 @@ try:
 
             # Update pending dataframe
             logging.info('Updating Database of pending records')
+            logging.debug(row['id'])
             index = data[data['id'] == row['id']].index[0]
             logging.debug(index)
             data.drop(index=index, inplace=True)
