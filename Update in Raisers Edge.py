@@ -441,12 +441,6 @@ def update_phones(each_row, re_id):
 
                 patch_request_re(url, params)
 
-                # Update Sync tags
-                add_tags('Stay Connected - Auto | Phone', 'Sync source', phone, re_id)
-
-                # Update Verified Tags
-                add_tags(phone, 'Verified Phone', 'Stay Connected', re_id)
-
             # Else, add in RE
             else:
                 params = {
@@ -472,6 +466,12 @@ def update_phones(each_row, re_id):
             url = 'https://api.sky.blackbaud.com/constituent/v1/phones'
 
             post_request_re(url, params)
+
+        # Update Sync tags
+        add_tags('Stay Connected - Auto | Phone', 'Sync source', phone, re_id)
+
+        # Update Verified Tags
+        add_tags(phone, 'Verified Phone', 'Stay Connected', re_id)
 
 def update_location(each_row, re_id):
     logging.info('Proceeding to update location')
