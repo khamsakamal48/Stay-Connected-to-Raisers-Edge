@@ -1335,8 +1335,6 @@ try:
             # Update pending dataframe
             find_remaining_data(data, completed)
 
-            break
-
         else:
             # Else, send Email to DB Admin
             logging.info('Multiple or no constituent found in Raisers Edge')
