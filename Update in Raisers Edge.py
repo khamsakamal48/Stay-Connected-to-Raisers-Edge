@@ -326,6 +326,10 @@ def update_emails(each_row, re_id):
     email_1 = each_row['email']
     email_2 = each_row['alternateemail']
 
+    # Converting to lowercase
+    email_1 = str(email_1).lower()
+    email_2 = str(email_2).lower()
+
     # Email 1
     if email_1:
 
@@ -340,6 +344,10 @@ def update_emails(each_row, re_id):
 
         # Mark as Primary
         re_data = re_data[['id', 'address']].drop_duplicates('address').copy()
+
+        # Converting all emails to lowercase
+        re_data['address'] = re_data['address'].apply(lambda x: str(x).lower())
+
         email_address_id = re_data[re_data['address'] == email_1]['id'].values[0]
 
         url = f'https://api.sky.blackbaud.com/constituent/v1/emailaddresses/{email_address_id}'
@@ -788,7 +796,7 @@ def update_linkedin(each_row, re_id):
         add_tags('Stay Connected - Auto | Online Presence', 'Sync source', str(linkedin)[:50], re_id)
 
 def update_chapter(each_row, re_id):
-    logging.info('Proceeding to update email')
+    logging.info('Proceeding to update chapter')
 
     chapter = each_row['chapter']
 
@@ -957,7 +965,8 @@ def send_mail_different_education(re_data, each_row, subject, re_id):
                         'ContentType': 'HTML',
                         'Content': emailbody
                     },
-                    'ToRecipients': get_recipients(SEND_TO)
+                    'ToRecipients': get_recipients(SEND_TO),
+                    'CcRecipients': get_recipients(CC_TO),
                 },
                 'SaveToSentItems': 'true'
             }
@@ -1122,7 +1131,8 @@ def send_mail_different_name(re_name, new_name, subject, re_id):
                         'ContentType': 'HTML',
                         'Content': emailbody
                     },
-                    'ToRecipients': get_recipients(SEND_TO)
+                    'ToRecipients': get_recipients(SEND_TO),
+                    'CcRecipients': get_recipients(CC_TO),
                 },
                 'SaveToSentItems': 'true'
             }
@@ -1204,7 +1214,8 @@ def constituent_not_found(data, subject, re_id):
                         'ContentType': 'HTML',
                         'Content': emailbody
                     },
-                    'ToRecipients': get_recipients(SEND_TO)
+                    'ToRecipients': get_recipients(SEND_TO),
+                    'CcRecipients': get_recipients(CC_TO),
                 },
                 'SaveToSentItems': 'true'
             }
@@ -1248,6 +1259,9 @@ try:
     for index, row in data.iterrows():
 
         email = row['email']
+
+        # Converting to lowercase
+        email = str(email).lower()
 
         row = row.fillna('').copy()
 
