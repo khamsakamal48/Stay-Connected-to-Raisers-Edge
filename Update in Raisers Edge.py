@@ -489,35 +489,49 @@ def update_location(each_row, re_id):
         address = str(city) + ', ' + str(state) + ', ' + str(country)
         address = address.replace('nan', '').strip().replace(', ,', ', ')
 
-        location = geolocator.geocode(address, addressdetails=True, language='en')
-
-        if location is None:
-            i = 0
-        else:
-            i = 1
-
-        while i == 0:
-            address_split = address[address.index(' ') + 1:]
-            address = address_split
-            location = geolocator.geocode(address_split, addressdetails=True, language='en')
+        try:
+            location = geolocator.geocode(address, addressdetails=True, language='en')
 
             if location is None:
-                address = address_split
-                try:
-                    if address == '':
-                        break
-                except:
-                    break
                 i = 0
+            else:
+                i = 1
 
-            if location is not None:
-                break
+            while i == 0:
+                address_split = address[address.index(' ') + 1:]
+                address = address_split
+                location = geolocator.geocode(address_split, addressdetails=True, language='en')
 
-        address = location.raw['address']
+                if location is None:
+                    address = address_split
+                    try:
+                        if address == '':
+                            break
+                    except:
+                        break
+                    i = 0
 
-        try:
-            city = address.get('city', '')
-            if city == '':
+                if location is not None:
+                    break
+
+            address = location.raw['address']
+
+            try:
+                city = address.get('city', '')
+                if city == '':
+                    try:
+                        city = address.get('state_district', '')
+                        if city == '':
+                            try:
+                                city = address.get('county', '')
+                            except:
+                                city = ''
+                    except:
+                        try:
+                            city = address.get('county', '')
+                        except:
+                            city = ''
+            except:
                 try:
                     city = address.get('state_district', '')
                     if city == '':
@@ -530,22 +544,12 @@ def update_location(each_row, re_id):
                         city = address.get('county', '')
                     except:
                         city = ''
-        except:
-            try:
-                city = address.get('state_district', '')
-                if city == '':
-                    try:
-                        city = address.get('county', '')
-                    except:
-                        city = ''
-            except:
-                try:
-                    city = address.get('county', '')
-                except:
-                    city = ''
 
-        state = address.get('state', '')
-        country = address.get('country', '')
+            state = address.get('state', '')
+            country = address.get('country', '')
+
+        except:
+            pass
 
         url = 'https://api.sky.blackbaud.com/constituent/v1/addresses'
 
@@ -1317,7 +1321,6 @@ try:
 except Exception as Argument:
     logging.error(Argument)
     send_error_emails('Error while uploading data to RE | Stay Connected')
-    pass
 
 finally:
     # Stop Logging
