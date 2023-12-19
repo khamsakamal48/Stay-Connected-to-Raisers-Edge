@@ -884,7 +884,7 @@ def update_education(each_row, re_id):
                 else:
                     # Different Education exists
                     send_mail_different_education(re_data.to_html(index=False, classes='table table-stripped'),
-                                                  each_row.to_html(index=False, classes='table table-stripped'),
+                                                  pd.DataFrame(each_row).T.to_html(index=False, classes='table table-stripped'),
                                                   'Different education data exists in RE and the one provided by Alum',
                                                   re_id)
             else:
